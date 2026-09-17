@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self';" />
+  <title>Futbal Tipy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <h1>Futbal Tipy</h1>
+      </div>
+
+      <nav class="league-list" id="leagueList">
+        <!-- naplnené skriptom -->
+      </nav>
+
+      <div class="field-group">
+        <label for="customLeagueId">Vlastný kód súťaže</label>
+        <input type="text" id="customLeagueId" placeholder="napr. PL, DED, PPL" />
+      </div>
+
+      <div class="field-group">
+        <label for="matchDateInput">Herný deň</label>
+        <input type="date" id="matchDateInput" />
+      </div>
+
+      <div class="field-group">
+        <label for="seasonInput">Sezóna (vypočítaná automaticky)</label>
+        <input type="number" id="seasonInput" value="2025" readonly />
+      </div>
+
+      <button class="btn-primary" id="loadFixturesBtn">Načítať zápasy</button>
+
+      <div class="sidebar-footer">
+        <button class="btn-ghost" id="openSettingsBtn">Nastavenia API kľúča</button>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section class="fixture-column">
+        <div class="column-header">
+          <h2>Zápasy v daný deň</h2>
+          <span class="muted" id="fixtureCount"></span>
+        </div>
+        <div class="fixture-list" id="fixtureList">
+          <p class="empty-state">Vyber ligu vľavo a klikni na „Načítať zápasy“.</p>
+        </div>
+      </section>
+
+      <section class="analysis-column" id="analysisColumn">
+        <div class="empty-state analysis-empty">
+          <p>Vyber zápas zo zoznamu vľavo.</p>
+          <p class="muted small">Zobrazí sa štatistická analýza a odporúčaný tip.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="settingsModal" hidden>
+    <div class="modal">
+      <h3>API-Football kľúč</h3>
+      <p class="muted small">
+        Kľúč z football-data.org (Account → My Account → registrácia je
+        zadarmo). Ukladá sa len lokálne na tomto počítači.
+      </p>
+      <input type="password" id="apiKeyInput" placeholder="Vlož svoj API kľúč" />
+      <div class="modal-actions">
+        <button class="btn-ghost" id="cancelSettingsBtn">Zrušiť</button>
+        <button class="btn-primary" id="saveSettingsBtn">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>

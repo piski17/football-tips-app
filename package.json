@@ -1,0 +1,22 @@
+{
+  "name": "football-tips-app",
+  "version": "1.0.0",
+  "description": "Desktopová aplikácia na analýzu futbalových zápasov a generovanie tipov na základe štatistík (API-Football)",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json && node scripts/copy-assets.js",
+    "start": "npm run build && electron .",
+    "dev": "tsc -w -p tsconfig.json"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "electron": "^42.0.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "electron-store": "^8.2.0"
+  }
+}
