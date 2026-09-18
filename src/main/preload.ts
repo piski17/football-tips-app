@@ -12,4 +12,15 @@ contextBridge.exposeInMainWorld("api", {
 
   analyzeFixture: (fixture: any, leagueId: number, season: number) =>
     ipcRenderer.invoke("analyze:fixture", { fixture, leagueId, season }),
+
+  getSquad: (teamId: number) => ipcRenderer.invoke("squad:get", teamId),
+
+  analyzePlayerGoal: (payload: {
+    playerId: number;
+    playerName: string;
+    leagueId: number;
+    season: number;
+    teamExpectedGoalsThisMatch: number;
+    teamSeasonGoalsPerGame: number;
+  }) => ipcRenderer.invoke("player:analyzeGoal", payload),
 });

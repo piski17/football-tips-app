@@ -8,6 +8,9 @@ import {
   LeagueAverages,
   TeamGoalPriors,
   TeamGoalPriorsResult,
+  SquadPlayer,
+  PlayerSeasonStats,
+  RawPlayerStat,
 } from "./types";
 
 const BASE_URL = "https://v3.football.api-sports.io";
@@ -86,6 +89,8 @@ function setCached<T>(key: string, value: T, ttlMs: number): void {
 const TTL_HISTORICAL_PRIORS = 6 * 60 * 60 * 1000; // 6 hodín - minulé sezóny sa nemenia
 const TTL_LEAGUE_AVERAGES = 60 * 60 * 1000; // 1 hodina
 const TTL_CORNERS_AVERAGE = 30 * 60 * 1000; // 30 minút - môže sa meniť s novo odohranými zápasmi
+const TTL_SQUAD = 6 * 60 * 60 * 1000; // 6 hodín - súpiska sa počas dňa prakticky nemení
+const TTL_PLAYER_STATS = 3 * 60 * 60 * 1000; // 3 hodiny
 
 function checkApiErrors(data: any): void {
   const errors = data?.errors;
@@ -279,30 +284,42 @@ export async function getHistoricalGoalPriors(
 
   // Váhy pre najbližšiu, druhú a tretiu predošlú sezónu - novšie sezóny sa počítajú viac.
   const recencyWeights = [3, 2, 1];
-
   const pastSeasons = Array.from({ length: seasonsBack }, (_, i) => season - 1 - i);
 
-  const seasonResults = await mapSequential(pastSeasons, async (pastSeason, idx) => {
-    try {
-      const res = await client().get("/teams/statistics", {
-        params: { league: leagueId, season: pastSeason, team: teamId },
-      });
-      const d = res.data?.response;
-      if (!d || !d.team || !d.fixtures?.played?.total) return null;
+  const fetchAllSeasons = () =>
+    mapSequential(pastSeasons, async (pastSeason, idx) => {
+      try {
+        const res = await client().get("/teams/statistics", {
+          params: { league: leagueId, season: pastSeason, team: teamId },
+        });
+        const d = res.data?.response;
+        if (!d || !d.team || !d.fixtures?.played?.total) return null;
 
-      return {
-        weight: recencyWeights[idx] ?? 1,
-        forHome: parseFloat(d.goals?.for?.average?.home) || 0,
-        forAway: parseFloat(d.goals?.for?.average?.away) || 0,
-        againstHome: parseFloat(d.goals?.against?.average?.home) || 0,
-        againstAway: parseFloat(d.goals?.against?.average?.away) || 0,
-      };
-    } catch {
-      return null;
+        return {
+          weight: recencyWeights[idx] ?? 1,
+          forHome: parseFloat(d.goals?.for?.average?.home) || 0,
+          forAway: parseFloat(d.goals?.for?.average?.away) || 0,
+          againstHome: parseFloat(d.goals?.against?.average?.home) || 0,
+          againstAway: parseFloat(d.goals?.against?.average?.away) || 0,
+        };
+      } catch {
+        return null;
+      }
+    });
+
+  let seasonResults = await fetchAllSeasons();
+  let valid = seasonResults.filter((r): r is NonNullable<typeof r> => r !== null);
+
+  // Ak sa nepodarilo nájsť všetky sezóny, skús to celé ešte raz odznova -
+  // mohlo ísť len o krátkodobý výpadok pri konkrétnom volaní.
+  if (valid.length < seasonsBack) {
+    const retryResults = await fetchAllSeasons();
+    const retryValid = retryResults.filter((r): r is NonNullable<typeof r> => r !== null);
+    if (retryValid.length > valid.length) {
+      valid = retryValid;
     }
-  });
+  }
 
-  const valid = seasonResults.filter((r): r is NonNullable<typeof r> => r !== null);
   if (valid.length === 0) {
     setCached(cacheKey, null, TTL_HISTORICAL_PRIORS);
     return null;
@@ -356,4 +373,110 @@ export async function getLeagueAverages(leagueId: number, season: number): Promi
   };
   setCached(cacheKey, result, TTL_LEAGUE_AVERAGES);
   return result;
+}
+
+/** Načíta aktuálnu súpisku tímu (hráči, pozícia, číslo dresu). */
+export async function getTeamSquad(teamId: number): Promise<SquadPlayer[]> {
+  const cacheKey = `squad:${teamId}`;
+  const cached = getCached<SquadPlayer[]>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const res = await client().get("/players/squads", { params: { team: teamId } });
+  checkApiErrors(res.data);
+
+  const players: any[] = res.data?.response?.[0]?.players ?? [];
+  const result: SquadPlayer[] = players.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    position: p.position,
+    number: p.number ?? null,
+    photo: p.photo,
+  }));
+
+  setCached(cacheKey, result, TTL_SQUAD);
+  return result;
+}
+
+/** Načíta sezónne góly a počet zápasov hráča v danej lige. */
+export async function getPlayerSeasonStats(
+  playerId: number,
+  season: number,
+  leagueId: number
+): Promise<PlayerSeasonStats | null> {
+  const cacheKey = `playerStats:${playerId}:${season}:${leagueId}`;
+  const cached = getCached<PlayerSeasonStats | null>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  try {
+    const res = await client().get("/players", {
+      params: { id: playerId, season, league: leagueId },
+    });
+    checkApiErrors(res.data);
+
+    const statsEntries: any[] = res.data?.response?.[0]?.statistics ?? [];
+    // Vyber štatistiky za správnu ligu (jeden hráč môže mať v odpovedi viac súťaží).
+    const entry = statsEntries.find((s: any) => s.league?.id === leagueId) ?? statsEntries[0];
+    if (!entry) {
+      setCached(cacheKey, null, TTL_PLAYER_STATS);
+      return null;
+    }
+
+    const result: PlayerSeasonStats = {
+      goals: entry.goals?.total ?? 0,
+      appearances: entry.games?.appearences ?? 0,
+    };
+    setCached(cacheKey, result, TTL_PLAYER_STATS);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Načíta VŠETKÝCH hráčov tímu naraz aj s ich sezónnymi gólmi a zápasmi
+ * (2-3 volania na celý tím podľa /players?team=..., namiesto jedného
+ * volania na každého hráča zvlášť). Používa sa na automatický výber
+ * najpravdepodobnejšieho strelca.
+ */
+export async function getTeamPlayersWithStats(
+  teamId: number,
+  season: number,
+  leagueId: number,
+  maxPages: number = 3
+): Promise<RawPlayerStat[]> {
+  const cacheKey = `teamPlayers:${teamId}:${season}:${leagueId}`;
+  const cached = getCached<RawPlayerStat[]>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const allPlayers: RawPlayerStat[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await client().get("/players", {
+      params: { team: teamId, season, league: leagueId, page },
+    });
+    checkApiErrors(res.data);
+
+    const response: any[] = res.data?.response ?? [];
+    totalPages = res.data?.paging?.total ?? 1;
+
+    for (const item of response) {
+      const statsEntries: any[] = item.statistics ?? [];
+      const entry = statsEntries.find((s: any) => s.league?.id === leagueId) ?? statsEntries[0];
+      if (!entry || !item.player) continue;
+
+      allPlayers.push({
+        id: item.player.id,
+        name: item.player.name,
+        goals: entry.goals?.total ?? 0,
+        appearances: entry.games?.appearences ?? 0,
+      });
+    }
+
+    page++;
+  } while (page <= totalPages && page <= maxPages);
+
+  setCached(cacheKey, allPlayers, TTL_SQUAD);
+  return allPlayers;
 }

@@ -133,6 +133,14 @@ export interface PredictionResult {
   corners?: OverUnderMarket;
   cards?: OverUnderMarket;
   bestBets: MarketPick[];
+  teamSeasonGoalsPerGame: {
+    home: number;
+    away: number;
+  };
+  topScorers: {
+    home: PlayerGoalPrediction | null;
+    away: PlayerGoalPrediction | null;
+  };
   historicalDataInfo: {
     home: { seasonsUsed: number; seasonsChecked: number } | null;
     away: { seasonsUsed: number; seasonsChecked: number } | null;
@@ -150,4 +158,36 @@ export interface LeaguePreset {
   id: number; // ID ligy v API-Football, napr. 39 pre Premier League
   name: string;
   country: string;
+}
+
+/** Hráč zo súpisky tímu. */
+export interface SquadPlayer {
+  id: number;
+  name: string;
+  position?: string;
+  number?: number | null;
+  photo?: string;
+}
+
+/** Sezónne štatistiky hráča potrebné na odhad pravdepodobnosti gólu. */
+export interface PlayerSeasonStats {
+  goals: number;
+  appearances: number;
+}
+
+/** Sezónne góly a zápasy hráča, získané hromadne pre celý tím naraz. */
+export interface RawPlayerStat {
+  id: number;
+  name: string;
+  goals: number;
+  appearances: number;
+}
+
+/** Výsledok odhadu pravdepodobnosti, že hráč v danom zápase skóruje. */
+export interface PlayerGoalPrediction {
+  player: { id: number; name: string };
+  seasonGoals: number;
+  appearances: number;
+  goalsPerGame: number;
+  probabilityToScore: number; // 0-100
 }

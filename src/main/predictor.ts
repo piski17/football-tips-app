@@ -10,6 +10,8 @@ import {
   PredictionResult,
   MarketPick,
   OverUnderMarket,
+  PlayerGoalPrediction,
+  RawPlayerStat,
 } from "./types";
 
 // Predvolené váhy jednotlivých faktorov v celkovom modeli.
@@ -265,7 +267,9 @@ export function predictMatch(
   homePriorsResult?: TeamGoalPriorsResult | null,
   awayPriorsResult?: TeamGoalPriorsResult | null,
   homeCornersAvg?: number | null,
-  awayCornersAvg?: number | null
+  awayCornersAvg?: number | null,
+  homePlayers?: RawPlayerStat[],
+  awayPlayers?: RawPlayerStat[]
 ): PredictionResult {
   const xg = expectedGoals(homeStats, awayStats, leagueAvg, homePriorsResult, awayPriorsResult);
   const poisson = poissonOutcomes(xg.home, xg.away);
@@ -374,6 +378,18 @@ export function predictMatch(
     corners,
     cards,
     bestBets,
+    teamSeasonGoalsPerGame: {
+      home: homeStats.goals.for.average.total,
+      away: awayStats.goals.for.average.total,
+    },
+    topScorers: {
+      home: homePlayers
+        ? predictTopScorer(homePlayers, xg.home, homeStats.goals.for.average.total)
+        : null,
+      away: awayPlayers
+        ? predictTopScorer(awayPlayers, xg.away, awayStats.goals.for.average.total)
+        : null,
+    },
     historicalDataInfo: {
       home: homePriorsResult
         ? { seasonsUsed: homePriorsResult.seasonsUsed, seasonsChecked: homePriorsResult.seasonsChecked }
@@ -390,4 +406,57 @@ export function predictMatch(
     },
     sampleSizeWarning,
   };
+}
+
+/**
+ * Odhadne pravdepodobnosť, že konkrétny hráč v tomto zápase skóruje aspoň raz.
+ * Logika: z hráčovho pomeru gólov na zápas a celkového priemeru gólov tímu na
+ * zápas odvodíme, akým podielom hráč typicky prispieva k gólom tímu. Tento
+ * podiel potom aplikujeme na už vypočítaný očakávaný počet gólov tímu v tomto
+ * konkrétnom zápase (z Poissonovho modelu) a spočítame Poissonovu
+ * pravdepodobnosť aspoň jedného gólu.
+ */
+export function predictPlayerGoal(
+  playerName: string,
+  playerId: number,
+  seasonGoals: number,
+  appearances: number,
+  teamExpectedGoalsThisMatch: number,
+  teamSeasonGoalsPerGame: number
+): PlayerGoalPrediction {
+  const goalsPerGame = appearances > 0 ? seasonGoals / appearances : 0;
+  const shareOfTeamGoals =
+    teamSeasonGoalsPerGame > 0 ? clamp(goalsPerGame / teamSeasonGoalsPerGame, 0, 1) : 0;
+  const lambda = shareOfTeamGoals * teamExpectedGoalsThisMatch;
+  const probabilityToScore = (1 - poissonPmf(0, lambda)) * 100;
+
+  return {
+    player: { id: playerId, name: playerName },
+    seasonGoals,
+    appearances,
+    goalsPerGame,
+    probabilityToScore,
+  };
+}
+
+/**
+ * Z celej súpisky tímu automaticky vyberie hráča s najvyššou pravdepodobnosťou
+ * gólu v tomto zápase. Hráčov s príliš málo odohranými zápasmi (menej ako
+ * `minAppearances`) vynechá, aby jeden náhodný gól v 1 zápase neskreslil výber.
+ */
+export function predictTopScorer(
+  players: RawPlayerStat[],
+  teamExpectedGoalsThisMatch: number,
+  teamSeasonGoalsPerGame: number,
+  minAppearances: number = 3
+): PlayerGoalPrediction | null {
+  const eligible = players.filter((p) => p.appearances >= minAppearances);
+  if (eligible.length === 0) return null;
+
+  const predictions = eligible.map((p) =>
+    predictPlayerGoal(p.name, p.id, p.goals, p.appearances, teamExpectedGoalsThisMatch, teamSeasonGoalsPerGame)
+  );
+
+  predictions.sort((a, b) => b.probabilityToScore - a.probabilityToScore);
+  return predictions[0];
 }

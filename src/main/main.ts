@@ -8,8 +8,11 @@ import {
   getLeagueAverages,
   getHistoricalGoalPriors,
   getTeamCornersAverage,
+  getTeamSquad,
+  getPlayerSeasonStats,
+  getTeamPlayersWithStats,
 } from "./apiClient";
-import { predictMatch, DEFAULT_WEIGHTS } from "./predictor";
+import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset } from "./types";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -84,6 +87,7 @@ ipcMain.handle(
   ) => {
     const { fixture, leagueId, season } = payload;
 
+    // Prvá vlna - rovnaké volania, ktoré boli predtým otestované ako stabilné.
     const [homeStats, awayStats, h2h, leagueAvg, homePriors, awayPriors, homeCorners, awayCorners] =
       await Promise.all([
         getTeamStatistics(leagueId, season, fixture.homeTeam.id),
@@ -96,6 +100,13 @@ ipcMain.handle(
         getTeamCornersAverage(leagueId, season, fixture.awayTeam.id),
       ]);
 
+    // Druhá vlna - súpisky hráčov, spustené AŽ PO prvej vlne, aby appka
+    // nevystrelila príliš veľa požiadaviek úplne naraz.
+    const [homePlayers, awayPlayers] = await Promise.all([
+      getTeamPlayersWithStats(fixture.homeTeam.id, season, leagueId),
+      getTeamPlayersWithStats(fixture.awayTeam.id, season, leagueId),
+    ]);
+
     return predictMatch(
       fixture,
       homeStats,
@@ -106,7 +117,47 @@ ipcMain.handle(
       homePriors,
       awayPriors,
       homeCorners,
-      awayCorners
+      awayCorners,
+      homePlayers,
+      awayPlayers
+    );
+  }
+);
+
+ipcMain.handle("squad:get", async (_e, teamId: number) => {
+  return getTeamSquad(teamId);
+});
+
+ipcMain.handle(
+  "player:analyzeGoal",
+  async (
+    _e,
+    payload: {
+      playerId: number;
+      playerName: string;
+      leagueId: number;
+      season: number;
+      teamExpectedGoalsThisMatch: number;
+      teamSeasonGoalsPerGame: number;
+    }
+  ) => {
+    const { playerId, playerName, leagueId, season, teamExpectedGoalsThisMatch, teamSeasonGoalsPerGame } =
+      payload;
+
+    const stats = await getPlayerSeasonStats(playerId, season, leagueId);
+    if (!stats) {
+      throw new Error(
+        `Pre hráča ${playerName} sa nenašli sezónne štatistiky v tejto súťaži (možno málo minút/zápasov).`
+      );
+    }
+
+    return predictPlayerGoal(
+      playerName,
+      playerId,
+      stats.goals,
+      stats.appearances,
+      teamExpectedGoalsThisMatch,
+      teamSeasonGoalsPerGame
     );
   }
 );
