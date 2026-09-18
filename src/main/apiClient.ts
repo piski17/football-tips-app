@@ -1,242 +1,359 @@
-import axios, { AxiosError, AxiosInstance } from "axios";
+import axios, { AxiosInstance } from "axios";
+import axiosRetry from "axios-retry";
 import { getApiKey } from "./config";
-import { Fixture, TeamStatistics, HeadToHeadSummary } from "./types";
+import {
+  Fixture,
+  TeamStatistics,
+  HeadToHeadMatch,
+  LeagueAverages,
+  TeamGoalPriors,
+  TeamGoalPriorsResult,
+} from "./types";
 
-const BASE_URL = "https://api.football-data.org/v4";
+const BASE_URL = "https://v3.football.api-sports.io";
 
 function client(): AxiosInstance {
   const key = getApiKey();
   if (!key) {
-    throw new Error(
-      "Chýba API kľúč. Zadaj ho v Nastaveniach appky pred načítaním dát."
-    );
+    throw new Error("Chýba API kľúč. Zadaj ho v Nastaveniach appky pred načítaním dát.");
   }
-  return axios.create({
+  const instance = axios.create({
     baseURL: BASE_URL,
-    headers: { "X-Auth-Token": key },
+    headers: { "x-apisports-key": key },
     timeout: 15000,
   });
-}
 
-/** Premení chybu z axiosu na čitateľnú správu (football-data.org posiela { message: "..." }). */
-function friendlyError(err: unknown): Error {
-  const axErr = err as AxiosError<any>;
-  const apiMessage = axErr?.response?.data?.message;
-  if (apiMessage) return new Error(apiMessage);
-  if (axErr?.message) return new Error(axErr.message);
-  return new Error(String(err));
-}
-
-function mapFixture(m: any, season: number): Fixture {
-  return {
-    fixtureId: m.id,
-    date: m.utcDate,
-    timestamp: Math.floor(new Date(m.utcDate).getTime() / 1000),
-    venue: m.venue,
-    league: {
-      id: m.competition?.code ?? "",
-      name: m.competition?.name ?? "",
-      season,
-      round: m.matchday ? `Kolo ${m.matchday}` : undefined,
-    },
-    homeTeam: {
-      id: m.homeTeam.id,
-      name: m.homeTeam.name,
-      logo: m.homeTeam.crest,
-    },
-    awayTeam: {
-      id: m.awayTeam.id,
-      name: m.awayTeam.name,
-      logo: m.awayTeam.crest,
-    },
-    status: m.status,
-  };
-}
-
-/** Načíta nadchádzajúce zápasy danej súťaže, voliteľne obmedzené na rozsah dátumov (napr. aktuálny týždeň). */
-export async function getFixturesByLeague(
-  competitionCode: string,
-  season: number,
-  limitCount: number = 20,
-  dateFrom?: string,
-  dateTo?: string
-): Promise<Fixture[]> {
-  try {
-    const params: Record<string, any> = { status: "SCHEDULED" };
-    if (dateFrom && dateTo) {
-      params.dateFrom = dateFrom;
-      params.dateTo = dateTo;
-    } else {
-      params.season = season;
-    }
-
-    const res = await client().get(`/competitions/${competitionCode}/matches`, {
-      params,
-    });
-
-    const matches = res.data?.matches ?? [];
-    return matches
-      .map((m: any) => mapFixture(m, season))
-      .sort((a: Fixture, b: Fixture) => a.timestamp - b.timestamp)
-      .slice(0, limitCount);
-  } catch (err) {
-    throw friendlyError(err);
-  }
-}
-
-/** Načíta zápasy na konkrétny dátum, voliteľne filtrované podľa súťaže. */
-export async function getFixturesByDate(
-  date: string,
-  competitionCode?: string,
-  season?: number
-): Promise<Fixture[]> {
-  try {
-    const url = competitionCode
-      ? `/competitions/${competitionCode}/matches`
-      : "/matches";
-    const res = await client().get(url, {
-      params: { dateFrom: date, dateTo: date },
-    });
-
-    const matches = res.data?.matches ?? [];
-    return matches.map((m: any) => mapFixture(m, season ?? new Date(date).getFullYear()));
-  } catch (err) {
-    throw friendlyError(err);
-  }
-}
-
-async function getStandingsTables(
-  competitionCode: string,
-  season: number
-): Promise<{ total: any[]; home: any[]; away: any[] }> {
-  const res = await client().get(`/competitions/${competitionCode}/standings`, {
-    params: { season },
+  // Automaticky zopakuje požiadavku pri krátkodobom výpadku siete alebo
+  // limite požiadaviek (HTTP 429) - zabraňuje tomu, aby jedna náhodne zlyhaná
+  // požiadavka spôsobila nekonzistentné výsledky medzi opakovanými analýzami.
+  axiosRetry(instance, {
+    retries: 5,
+    retryDelay: axiosRetry.exponentialDelay,
+    retryCondition: (error) =>
+      axiosRetry.isNetworkOrIdempotentRequestError(error) || error.response?.status === 429,
   });
 
-  const standings = res.data?.standings ?? [];
-  const findTable = (type: string) =>
-    standings.find((s: any) => s.type === type)?.table ?? [];
+  return instance;
+}
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Spracuje položky POSTUPNE (nie všetky naraz), s malým odstupom medzi nimi.
+ * Bráni tomu, aby appka vystrelila príliš veľa súbežných požiadaviek naraz
+ * a narazila na krátkodobý limit API, ktorý by spôsobil nekonzistentné výsledky.
+ */
+async function mapSequential<T, R>(
+  items: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  delayMs: number = 200
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i++) {
+    results.push(await fn(items[i], i));
+    if (i < items.length - 1) await delay(delayMs);
+  }
+  return results;
+}
+
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
+// Jednoduchá pamäť (cache) s časovým limitom - šetrí API volania pre dáta,
+// ktoré sa počas krátkeho času nemenia (história minulých sezón, ligový
+// priemer, priemer rohov), a zároveň robí výsledky konzistentnejšie, keďže
+// sa nemusia sťahovať znova zakaždým, keď klikneš na ten istý zápas.
+const cache = new Map<string, CacheEntry<any>>();
+
+function getCached<T>(key: string): T | undefined {
+  const entry = cache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiresAt) {
+    cache.delete(key);
+    return undefined;
+  }
+  return entry.value as T;
+}
+
+function setCached<T>(key: string, value: T, ttlMs: number): void {
+  cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+}
+
+const TTL_HISTORICAL_PRIORS = 6 * 60 * 60 * 1000; // 6 hodín - minulé sezóny sa nemenia
+const TTL_LEAGUE_AVERAGES = 60 * 60 * 1000; // 1 hodina
+const TTL_CORNERS_AVERAGE = 30 * 60 * 1000; // 30 minút - môže sa meniť s novo odohranými zápasmi
+
+function checkApiErrors(data: any): void {
+  const errors = data?.errors;
+  if (!errors) return;
+  const messages: string[] = Array.isArray(errors) ? errors : Object.values(errors).map((v) => String(v));
+  if (messages.length > 0) throw new Error(messages.join(" | "));
+}
+
+function mapFixture(item: any): Fixture {
   return {
-    total: findTable("TOTAL"),
-    home: findTable("HOME"),
-    away: findTable("AWAY"),
+    fixtureId: item.fixture.id,
+    date: item.fixture.date,
+    timestamp: item.fixture.timestamp,
+    venue: item.fixture.venue?.name,
+    league: {
+      id: item.league.id,
+      name: item.league.name,
+      season: item.league.season,
+      round: item.league.round,
+    },
+    homeTeam: { id: item.teams.home.id, name: item.teams.home.name, logo: item.teams.home.logo },
+    awayTeam: { id: item.teams.away.id, name: item.teams.away.name, logo: item.teams.away.logo },
+    status: item.fixture.status?.short ?? "NS",
   };
 }
 
-function safeAvg(goals: number, played: number): number {
-  return played > 0 ? goals / played : 0;
+/** Načíta zápasy danej ligy/sezóny na konkrétny deň (alebo všetky, ak deň nie je zadaný). */
+export async function getFixturesByLeague(
+  leagueId: number,
+  season: number,
+  limitCount: number = 20,
+  date?: string
+): Promise<Fixture[]> {
+  const params: Record<string, any> = { league: leagueId, season };
+  if (date) params.date = date;
+
+  const res = await client().get("/fixtures", { params });
+  checkApiErrors(res.data);
+
+  const all = (res.data?.response ?? []).map((item: any) => mapFixture(item));
+  return all.sort((a: Fixture, b: Fixture) => a.timestamp - b.timestamp).slice(0, limitCount);
 }
 
-/** Odvodí agregované štatistiky tímu (forma, priemer gólov doma/vonku) z tabuľky súťaže. */
+/** Načíta agregované štatistiky tímu v danej lige a sezóne. */
 export async function getTeamStatistics(
-  competitionCode: string,
+  leagueId: number,
   season: number,
   teamId: number
 ): Promise<TeamStatistics> {
+  const res = await client().get("/teams/statistics", {
+    params: { league: leagueId, season, team: teamId },
+  });
+  checkApiErrors(res.data);
+
+  const d = res.data?.response;
+  if (!d || !d.team) {
+    throw new Error(`Štatistiky pre tím ${teamId} neboli nájdené (liga ${leagueId}, sezóna ${season}).`);
+  }
+
+  // Karty prichádzajú rozdelené po 15-minútových intervaloch (žlté aj červené) -
+  // spočítame ich všetky a vydelíme počtom zápasov, aby sme dostali priemer na zápas.
+  const sumCardBuckets = (buckets: any): number => {
+    if (!buckets) return 0;
+    return Object.values(buckets).reduce((sum: number, bucket: any) => sum + (bucket?.total ?? 0), 0);
+  };
+  const totalYellow = sumCardBuckets(d.cards?.yellow);
+  const totalRed = sumCardBuckets(d.cards?.red);
+  const totalGames = d.fixtures?.played?.total ?? 0;
+  const cardsPerGame = totalGames > 0 ? (totalYellow + totalRed) / totalGames : 0;
+
+  return {
+    team: { id: d.team.id, name: d.team.name, logo: d.team.logo },
+    form: d.form ?? "",
+    fixtures: {
+      played: d.fixtures.played,
+      wins: d.fixtures.wins,
+      draws: d.fixtures.draws,
+      loses: d.fixtures.loses,
+    },
+    goals: {
+      for: {
+        total: d.goals.for.total,
+        average: {
+          home: parseFloat(d.goals.for.average.home) || 0,
+          away: parseFloat(d.goals.for.average.away) || 0,
+          total: parseFloat(d.goals.for.average.total) || 0,
+        },
+      },
+      against: {
+        total: d.goals.against.total,
+        average: {
+          home: parseFloat(d.goals.against.average.home) || 0,
+          away: parseFloat(d.goals.against.average.away) || 0,
+          total: parseFloat(d.goals.against.average.total) || 0,
+        },
+      },
+    },
+    cardsPerGame,
+  };
+}
+
+/**
+ * Dopočíta priemerný počet rohov tímu za zápas z jeho posledných `lastN`
+ * odohraných zápasov (API-Football nemá priemer rohov v /teams/statistics,
+ * treba ho poskladať zo štatistík jednotlivých zápasov).
+ */
+export async function getTeamCornersAverage(
+  leagueId: number,
+  season: number,
+  teamId: number,
+  lastN: number = 10
+): Promise<number | null> {
+  const cacheKey = `corners:${leagueId}:${season}:${teamId}:${lastN}`;
+  const cached = getCached<number | null>(cacheKey);
+  if (cached !== undefined) return cached;
+
   try {
-    const { total, home, away } = await getStandingsTables(competitionCode, season);
-
-    const totalEntry = total.find((t: any) => t.team.id === teamId);
-    const homeEntry = home.find((t: any) => t.team.id === teamId);
-    const awayEntry = away.find((t: any) => t.team.id === teamId);
-
-    if (!totalEntry) {
-      throw new Error(
-        `Tím s ID ${teamId} sa nenašiel v tabuľke súťaže ${competitionCode} (sezóna ${season}).`
-      );
+    const fixturesRes = await client().get("/fixtures", {
+      params: { team: teamId, league: leagueId, season, last: lastN, status: "FT" },
+    });
+    checkApiErrors(fixturesRes.data);
+    const fixtures: any[] = fixturesRes.data?.response ?? [];
+    if (fixtures.length === 0) {
+      setCached(cacheKey, null, TTL_CORNERS_AVERAGE);
+      return null;
     }
 
-    const form = (totalEntry.form ?? "")
-      .split(",")
-      .map((s: string) => s.trim())
-      .filter(Boolean)
-      .join("");
+    const cornerValues = await mapSequential(fixtures, async (f: any) => {
+      try {
+        const statsRes = await client().get("/fixtures/statistics", {
+          params: { fixture: f.fixture.id, team: teamId },
+        });
+        const stats: any[] = statsRes.data?.response?.[0]?.statistics ?? [];
+        const corner = stats.find((s: any) => s.type === "Corner Kicks");
+        return typeof corner?.value === "number" ? corner.value : null;
+      } catch {
+        return null;
+      }
+    });
 
-    return {
-      team: {
-        id: totalEntry.team.id,
-        name: totalEntry.team.name,
-        logo: totalEntry.team.crest,
-      },
-      form,
-      fixtures: {
-        played: {
-          home: homeEntry?.playedGames ?? 0,
-          away: awayEntry?.playedGames ?? 0,
-          total: totalEntry.playedGames,
-        },
-        wins: {
-          home: homeEntry?.won ?? 0,
-          away: awayEntry?.won ?? 0,
-          total: totalEntry.won,
-        },
-        draws: {
-          home: homeEntry?.draw ?? 0,
-          away: awayEntry?.draw ?? 0,
-          total: totalEntry.draw,
-        },
-        loses: {
-          home: homeEntry?.lost ?? 0,
-          away: awayEntry?.lost ?? 0,
-          total: totalEntry.lost,
-        },
-      },
-      goals: {
-        for: {
-          total: {
-            home: homeEntry?.goalsFor ?? 0,
-            away: awayEntry?.goalsFor ?? 0,
-            total: totalEntry.goalsFor,
-          },
-          average: {
-            home: safeAvg(homeEntry?.goalsFor ?? 0, homeEntry?.playedGames ?? 0),
-            away: safeAvg(awayEntry?.goalsFor ?? 0, awayEntry?.playedGames ?? 0),
-            total: safeAvg(totalEntry.goalsFor, totalEntry.playedGames),
-          },
-        },
-        against: {
-          total: {
-            home: homeEntry?.goalsAgainst ?? 0,
-            away: awayEntry?.goalsAgainst ?? 0,
-            total: totalEntry.goalsAgainst,
-          },
-          average: {
-            home: safeAvg(homeEntry?.goalsAgainst ?? 0, homeEntry?.playedGames ?? 0),
-            away: safeAvg(awayEntry?.goalsAgainst ?? 0, awayEntry?.playedGames ?? 0),
-            total: safeAvg(totalEntry.goalsAgainst, totalEntry.playedGames),
-          },
-        },
-      },
-    };
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("sa nenašiel v tabuľke")) throw err;
-    throw friendlyError(err);
+    const valid = cornerValues.filter((v): v is number => v !== null);
+    if (valid.length === 0) {
+      setCached(cacheKey, null, TTL_CORNERS_AVERAGE);
+      return null;
+    }
+    const result = valid.reduce((a, b) => a + b, 0) / valid.length;
+    setCached(cacheKey, result, TTL_CORNERS_AVERAGE);
+    return result;
+  } catch {
+    return null;
   }
 }
 
-/** Načíta súhrn vzájomných zápasov pre konkrétny zápas (podľa ID zápasu). */
+/** Načíta posledných N vzájomných zápasov medzi dvoma tímami. */
 export async function getHeadToHead(
-  fixtureId: number,
-  limit: number = 10
-): Promise<HeadToHeadSummary> {
-  try {
-    const res = await client().get(`/matches/${fixtureId}/head2head`, {
-      params: { limit },
-    });
+  team1Id: number,
+  team2Id: number,
+  last: number = 10
+): Promise<HeadToHeadMatch[]> {
+  const res = await client().get("/fixtures/headtohead", {
+    params: { h2h: `${team1Id}-${team2Id}`, last },
+  });
+  checkApiErrors(res.data);
 
-    const agg = res.data?.aggregates;
-    if (!agg) {
-      return { matchesConsidered: 0, homeWins: 0, draws: 0, awayWins: 0 };
+  return (res.data?.response ?? []).map((item: any) => ({
+    fixtureId: item.fixture.id,
+    date: item.fixture.date,
+    homeTeamId: item.teams.home.id,
+    awayTeamId: item.teams.away.id,
+    homeGoals: item.goals.home,
+    awayGoals: item.goals.away,
+  }));
+}
+
+/**
+ * Načíta priemer gólov tímu z VIACERÝCH minulých sezón (rovnaká liga) a
+ * skombinuje ich do jedného váženého priemeru - novšie sezóny majú väčšiu váhu.
+ * Používa sa ako informovanejší základ na vyhladenie štatistík na začiatku
+ * novej sezóny, namiesto obyčajného ligového priemeru. Sezóny, v ktorých tím
+ * v tejto lige nehral (napr. bol postúpený/zostúpil), sa jednoducho preskočia.
+ */
+export async function getHistoricalGoalPriors(
+  leagueId: number,
+  season: number,
+  teamId: number,
+  seasonsBack: number = 3
+): Promise<TeamGoalPriorsResult | null> {
+  const cacheKey = `priors:${leagueId}:${season}:${teamId}:${seasonsBack}`;
+  const cached = getCached<TeamGoalPriorsResult | null>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  // Váhy pre najbližšiu, druhú a tretiu predošlú sezónu - novšie sezóny sa počítajú viac.
+  const recencyWeights = [3, 2, 1];
+
+  const pastSeasons = Array.from({ length: seasonsBack }, (_, i) => season - 1 - i);
+
+  const seasonResults = await mapSequential(pastSeasons, async (pastSeason, idx) => {
+    try {
+      const res = await client().get("/teams/statistics", {
+        params: { league: leagueId, season: pastSeason, team: teamId },
+      });
+      const d = res.data?.response;
+      if (!d || !d.team || !d.fixtures?.played?.total) return null;
+
+      return {
+        weight: recencyWeights[idx] ?? 1,
+        forHome: parseFloat(d.goals?.for?.average?.home) || 0,
+        forAway: parseFloat(d.goals?.for?.average?.away) || 0,
+        againstHome: parseFloat(d.goals?.against?.average?.home) || 0,
+        againstAway: parseFloat(d.goals?.against?.average?.away) || 0,
+      };
+    } catch {
+      return null;
     }
+  });
 
-    return {
-      matchesConsidered: agg.numberOfMatches ?? 0,
-      homeWins: agg.homeTeam?.wins ?? 0,
-      draws: agg.homeTeam?.draws ?? 0,
-      awayWins: agg.awayTeam?.wins ?? 0,
-    };
-  } catch (err) {
-    throw friendlyError(err);
+  const valid = seasonResults.filter((r): r is NonNullable<typeof r> => r !== null);
+  if (valid.length === 0) {
+    setCached(cacheKey, null, TTL_HISTORICAL_PRIORS);
+    return null;
   }
+
+  const totalWeight = valid.reduce((sum, r) => sum + r.weight, 0);
+  const weightedAvg = (key: "forHome" | "forAway" | "againstHome" | "againstAway") =>
+    valid.reduce((sum, r) => sum + r[key] * r.weight, 0) / totalWeight;
+
+  const result: TeamGoalPriorsResult = {
+    priors: {
+      forHome: weightedAvg("forHome"),
+      forAway: weightedAvg("forAway"),
+      againstHome: weightedAvg("againstHome"),
+      againstAway: weightedAvg("againstAway"),
+    },
+    seasonsUsed: valid.length,
+    seasonsChecked: seasonsBack,
+  };
+  setCached(cacheKey, result, TTL_HISTORICAL_PRIORS);
+  return result;
+}
+
+/** Dopočíta skutočný ligový priemer gólov doma/vonku z celej tabuľky danej sezóny. */
+export async function getLeagueAverages(leagueId: number, season: number): Promise<LeagueAverages> {
+  const cacheKey = `leagueAvg:${leagueId}:${season}`;
+  const cached = getCached<LeagueAverages>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const res = await client().get("/standings", { params: { league: leagueId, season } });
+  checkApiErrors(res.data);
+
+  const groups: any[] = res.data?.response?.[0]?.league?.standings ?? [];
+  const table: any[] = groups.flat();
+
+  let totalHomeGoals = 0;
+  let totalHomeGames = 0;
+  let totalAwayGoals = 0;
+  let totalAwayGames = 0;
+
+  for (const team of table) {
+    totalHomeGoals += team.home?.goals?.for ?? 0;
+    totalHomeGames += team.home?.played ?? 0;
+    totalAwayGoals += team.away?.goals?.for ?? 0;
+    totalAwayGames += team.away?.played ?? 0;
+  }
+
+  const result: LeagueAverages = {
+    home: totalHomeGames > 0 ? totalHomeGoals / totalHomeGames : 1.5,
+    away: totalAwayGames > 0 ? totalAwayGoals / totalAwayGames : 1.15,
+  };
+  setCached(cacheKey, result, TTL_LEAGUE_AVERAGES);
+  return result;
 }

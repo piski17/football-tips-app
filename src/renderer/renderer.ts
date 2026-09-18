@@ -4,10 +4,9 @@ interface FootballApi {
   hasApiKey(): Promise<boolean>;
   getApiKey(): Promise<string>;
   setApiKey(key: string): Promise<boolean>;
-  getLeaguePresets(): Promise<Array<{ id: string; name: string; country: string }>>;
-  getFixturesByLeague(leagueId: string, season: number, next: number, date?: string): Promise<any[]>;
-  getFixturesByDate(date: string, leagueId?: string, season?: number): Promise<any[]>;
-  analyzeFixture(fixture: any, leagueId: string, season: number): Promise<any>;
+  getLeaguePresets(): Promise<Array<{ id: number; name: string; country: string }>>;
+  getFixturesByLeague(leagueId: number, season: number, next: number, date?: string): Promise<any[]>;
+  analyzeFixture(fixture: any, leagueId: number, season: number): Promise<any>;
 }
 
 declare global {
@@ -16,7 +15,7 @@ declare global {
   }
 }
 
-let selectedLeagueId: string | null = null;
+let selectedLeagueId: number | null = null;
 let currentFixtures: any[] = [];
 let selectedFixtureId: number | null = null;
 
@@ -74,16 +73,16 @@ async function init() {
   });
 }
 
-function selectLeague(id: string, el: HTMLElement) {
+function selectLeague(id: number, el: HTMLElement) {
   selectedLeagueId = id;
   customLeagueInput.value = "";
   document.querySelectorAll(".league-item").forEach((n) => n.classList.remove("active"));
   el.classList.add("active");
 }
 
-function getActiveLeagueId(): string | null {
+function getActiveLeagueId(): number | null {
   if (customLeagueInput.value.trim()) {
-    return customLeagueInput.value.trim().toUpperCase();
+    return parseInt(customLeagueInput.value.trim(), 10);
   }
   return selectedLeagueId;
 }
@@ -124,7 +123,7 @@ loadFixturesBtn.addEventListener("click", async () => {
   }
 });
 
-function renderFixtureList(fixtures: any[], leagueId: string, season: number) {
+function renderFixtureList(fixtures: any[], leagueId: number, season: number) {
   fixtureCountEl.textContent = fixtures.length ? `${fixtures.length} zápasov` : "";
 
   if (!fixtures.length) {
@@ -166,7 +165,7 @@ function renderFixtureList(fixtures: any[], leagueId: string, season: number) {
   });
 }
 
-async function analyzeFixture(fixture: any, leagueId: string, season: number) {
+async function analyzeFixture(fixture: any, leagueId: number, season: number) {
   analysisColumnEl.innerHTML = `<div class="loading-state">Počítam štatistickú analýzu…</div>`;
 
   try {
@@ -206,6 +205,26 @@ function renderAnalysis(r: any) {
       </div>
     </div>
 
+    <div class="best-bets-section">
+      <div class="section-title">Odporúčané tipy (zoradené podľa istoty)</div>
+      <div class="best-bets-list">
+        ${(r.bestBets || [])
+          .map(
+            (bet: any, idx: number) => `
+          <div class="best-bet-row">
+            <div class="best-bet-rank">${idx + 1}.</div>
+            <div class="best-bet-info">
+              <div class="best-bet-market">${escapeHtml(bet.market)}</div>
+              <div class="best-bet-selection">${escapeHtml(bet.selection)}</div>
+            </div>
+            <div class="best-bet-prob">${bet.probability.toFixed(0)}%</div>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+    </div>
+
     <div class="prob-section">
       <div class="section-title">Pravdepodobnosť výsledku</div>
       ${probRow(r.fixture.homeTeam.name, r.probabilities.homeWin)}
@@ -214,8 +233,8 @@ function renderAnalysis(r: any) {
     </div>
 
     <div class="stats-grid">
-      ${teamStatCard(r.fixture.homeTeam.name, r.form.home, r.form.homeScore, r.expectedGoals.home)}
-      ${teamStatCard(r.fixture.awayTeam.name, r.form.away, r.form.awayScore, r.expectedGoals.away)}
+      ${teamStatCard(r.fixture.homeTeam.name, r.form.home, r.form.homeScore, r.expectedGoals.home, r.historicalDataInfo?.home)}
+      ${teamStatCard(r.fixture.awayTeam.name, r.form.away, r.form.awayScore, r.expectedGoals.away, r.historicalDataInfo?.away)}
     </div>
 
     <div class="prob-section">
@@ -233,6 +252,19 @@ function renderAnalysis(r: any) {
       <div class="market-card">
         <div class="market-value">${r.btts.yes.toFixed(0)}%</div>
         <div class="market-label">Obaja tímy skórujú</div>
+      </div>
+      ${
+        r.corners
+          ? `
+      <div class="market-card">
+        <div class="market-value">${r.corners.over >= r.corners.under ? r.corners.over.toFixed(0) : r.corners.under.toFixed(0)}%</div>
+        <div class="market-label">${r.corners.over >= r.corners.under ? "Over" : "Under"} ${r.corners.line} rohov</div>
+      </div>`
+          : ""
+      }
+      <div class="market-card">
+        <div class="market-value">${r.cards.over >= r.cards.under ? r.cards.over.toFixed(0) : r.cards.under.toFixed(0)}%</div>
+        <div class="market-label">${r.cards.over >= r.cards.under ? "Over" : "Under"} ${r.cards.line} kariet</div>
       </div>
     </div>
 
@@ -254,12 +286,22 @@ function probRow(label: string, value: number): string {
   `;
 }
 
-function teamStatCard(name: string, form: string, formScore: number, xg: number): string {
+function teamStatCard(
+  name: string,
+  form: string,
+  formScore: number,
+  xg: number,
+  historyInfo?: { seasonsUsed: number; seasonsChecked: number } | null
+): string {
   const pills = form
     .slice(-5)
     .split("")
     .map((r) => `<div class="form-pill ${r}">${r}</div>`)
     .join("");
+
+  const historyLine = historyInfo
+    ? `<div class="stat-line"><span>Historické sezóny použité</span><strong>${historyInfo.seasonsUsed} / ${historyInfo.seasonsChecked}</strong></div>`
+    : `<div class="stat-line"><span>Historické sezóny použité</span><strong>0 (nenájdené)</strong></div>`;
 
   return `
     <div class="stat-card">
@@ -267,6 +309,7 @@ function teamStatCard(name: string, form: string, formScore: number, xg: number)
       <div class="form-pills">${pills || '<span class="muted small">bez dát o forme</span>'}</div>
       <div class="stat-line"><span>Vážené skóre formy</span><strong>${formScore.toFixed(2)} / 3.00</strong></div>
       <div class="stat-line"><span>Očakávané góly</span><strong>${xg.toFixed(2)}</strong></div>
+      ${historyLine}
     </div>
   `;
 }

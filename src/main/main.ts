@@ -3,21 +3,23 @@ import * as path from "path";
 import { getApiKey, setApiKey, hasApiKey } from "./config";
 import {
   getFixturesByLeague,
-  getFixturesByDate,
   getTeamStatistics,
   getHeadToHead,
+  getLeagueAverages,
+  getHistoricalGoalPriors,
+  getTeamCornersAverage,
 } from "./apiClient";
 import { predictMatch, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset } from "./types";
 
-// Niekoľko bežných líg dostupných na bezplatnom pláne football-data.org.
+// Top ligy dostupné s API-Football Pro plánom.
 const LEAGUE_PRESETS: LeaguePreset[] = [
-  { id: "PL", name: "Premier League", country: "Anglicko" },
-  { id: "PD", name: "La Liga", country: "Španielsko" },
-  { id: "SA", name: "Serie A", country: "Taliansko" },
-  { id: "BL1", name: "Bundesliga", country: "Nemecko" },
-  { id: "FL1", name: "Ligue 1", country: "Francúzsko" },
-  { id: "CL", name: "UEFA Champions League", country: "Európa" },
+  { id: 39, name: "Premier League", country: "Anglicko" },
+  { id: 140, name: "La Liga", country: "Španielsko" },
+  { id: 135, name: "Serie A", country: "Taliansko" },
+  { id: 78, name: "Bundesliga", country: "Nemecko" },
+  { id: 61, name: "Ligue 1", country: "Francúzsko" },
+  { id: 2, name: "UEFA Champions League", country: "Európa" },
 ];
 
 let mainWindow: BrowserWindow | null = null;
@@ -64,16 +66,9 @@ ipcMain.handle("leagues:presets", () => LEAGUE_PRESETS);
 
 ipcMain.handle(
   "fixtures:byLeague",
-  async (_e, leagueId: string, season: number, next: number, date?: string) => {
+  async (_e, leagueId: number, season: number, next: number, date?: string) => {
     const day = date || new Date().toISOString().slice(0, 10);
-    return getFixturesByLeague(leagueId, season, next, day, day);
-  }
-);
-
-ipcMain.handle(
-  "fixtures:byDate",
-  async (_e, date: string, leagueId?: string, season?: number) => {
-    return getFixturesByDate(date, leagueId, season);
+    return getFixturesByLeague(leagueId, season, next, day);
   }
 );
 
@@ -83,18 +78,35 @@ ipcMain.handle(
     _e,
     payload: {
       fixture: any;
-      leagueId: string;
+      leagueId: number;
       season: number;
     }
   ) => {
     const { fixture, leagueId, season } = payload;
 
-    const [homeStats, awayStats, h2h] = await Promise.all([
-      getTeamStatistics(leagueId, season, fixture.homeTeam.id),
-      getTeamStatistics(leagueId, season, fixture.awayTeam.id),
-      getHeadToHead(fixture.fixtureId, 10),
-    ]);
+    const [homeStats, awayStats, h2h, leagueAvg, homePriors, awayPriors, homeCorners, awayCorners] =
+      await Promise.all([
+        getTeamStatistics(leagueId, season, fixture.homeTeam.id),
+        getTeamStatistics(leagueId, season, fixture.awayTeam.id),
+        getHeadToHead(fixture.homeTeam.id, fixture.awayTeam.id, 10),
+        getLeagueAverages(leagueId, season),
+        getHistoricalGoalPriors(leagueId, season, fixture.homeTeam.id),
+        getHistoricalGoalPriors(leagueId, season, fixture.awayTeam.id),
+        getTeamCornersAverage(leagueId, season, fixture.homeTeam.id),
+        getTeamCornersAverage(leagueId, season, fixture.awayTeam.id),
+      ]);
 
-    return predictMatch(fixture, homeStats, awayStats, h2h, DEFAULT_WEIGHTS);
+    return predictMatch(
+      fixture,
+      homeStats,
+      awayStats,
+      h2h,
+      leagueAvg,
+      DEFAULT_WEIGHTS,
+      homePriors,
+      awayPriors,
+      homeCorners,
+      awayCorners
+    );
   }
 );

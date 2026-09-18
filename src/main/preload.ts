@@ -7,12 +7,9 @@ contextBridge.exposeInMainWorld("api", {
 
   getLeaguePresets: () => ipcRenderer.invoke("leagues:presets"),
 
-  getFixturesByLeague: (leagueId: string, season: number, next: number, date?: string) =>
+  getFixturesByLeague: (leagueId: number, season: number, next: number, date?: string) =>
     ipcRenderer.invoke("fixtures:byLeague", leagueId, season, next, date),
 
-  getFixturesByDate: (date: string, leagueId?: string, season?: number) =>
-    ipcRenderer.invoke("fixtures:byDate", date, leagueId, season),
-
-  analyzeFixture: (fixture: any, leagueId: string, season: number) =>
+  analyzeFixture: (fixture: any, leagueId: number, season: number) =>
     ipcRenderer.invoke("analyze:fixture", { fixture, leagueId, season }),
 });
