@@ -14,6 +14,7 @@ import {
   getFixtureResult,
   getFixtureCornersAndCards,
   getFixtureGoalscorerIds,
+  getFixtureLineupPlayerIds,
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset, SavedTip } from "./types";
@@ -105,11 +106,13 @@ ipcMain.handle(
         getTeamCornersAverage(leagueId, season, fixture.awayTeam.id),
       ]);
 
-    // Druhá vlna - súpisky hráčov, spustené AŽ PO prvej vlne, aby appka
-    // nevystrelila príliš veľa požiadaviek úplne naraz.
-    const [homePlayers, awayPlayers] = await Promise.all([
+    // Druhá vlna - súpisky hráčov + potvrdená zostava (ak je k dispozícii),
+    // spustené AŽ PO prvej vlne, aby appka nevystrelila príliš veľa
+    // požiadaviek úplne naraz.
+    const [homePlayers, awayPlayers, lineup] = await Promise.all([
       getTeamPlayersWithStats(fixture.homeTeam.id, season, leagueId),
       getTeamPlayersWithStats(fixture.awayTeam.id, season, leagueId),
+      getFixtureLineupPlayerIds(fixture.fixtureId),
     ]);
 
     return predictMatch(
@@ -124,7 +127,9 @@ ipcMain.handle(
       homeCorners,
       awayCorners,
       homePlayers,
-      awayPlayers
+      awayPlayers,
+      lineup.homeIds,
+      lineup.awayIds
     );
   }
 );
