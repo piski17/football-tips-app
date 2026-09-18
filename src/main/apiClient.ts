@@ -218,20 +218,33 @@ export async function getTeamCornersAverage(
       return null;
     }
 
-    const cornerValues = await mapSequential(fixtures, async (f: any) => {
-      try {
-        const statsRes = await client().get("/fixtures/statistics", {
-          params: { fixture: f.fixture.id, team: teamId },
-        });
-        const stats: any[] = statsRes.data?.response?.[0]?.statistics ?? [];
-        const corner = stats.find((s: any) => s.type === "Corner Kicks");
-        return typeof corner?.value === "number" ? corner.value : null;
-      } catch {
-        return null;
-      }
-    });
+    const fetchCornerValues = () =>
+      mapSequential(fixtures, async (f: any) => {
+        try {
+          const statsRes = await client().get("/fixtures/statistics", {
+            params: { fixture: f.fixture.id, team: teamId },
+          });
+          const stats: any[] = statsRes.data?.response?.[0]?.statistics ?? [];
+          const corner = stats.find((s: any) => s.type === "Corner Kicks");
+          return typeof corner?.value === "number" ? corner.value : null;
+        } catch {
+          return null;
+        }
+      });
 
-    const valid = cornerValues.filter((v): v is number => v !== null);
+    let cornerValues = await fetchCornerValues();
+    let valid = cornerValues.filter((v): v is number => v !== null);
+
+    // Ak sa nepodarilo stiahnuť dáta pre všetky zápasy, skús to celé ešte raz -
+    // aj jeden chybajúci zápas vie posunúť priemer okolo hranice Over/Under.
+    if (valid.length < fixtures.length) {
+      const retryValues = await fetchCornerValues();
+      const retryValid = retryValues.filter((v): v is number => v !== null);
+      if (retryValid.length > valid.length) {
+        valid = retryValid;
+      }
+    }
+
     if (valid.length === 0) {
       setCached(cacheKey, null, TTL_CORNERS_AVERAGE);
       return null;
@@ -479,4 +492,80 @@ export async function getTeamPlayersWithStats(
 
   setCached(cacheKey, allPlayers, TTL_SQUAD);
   return allPlayers;
+}
+
+/** Načíta aktuálny stav a skóre konkrétneho zápasu (na overenie uložených tipov). */
+export async function getFixtureResult(
+  fixtureId: number
+): Promise<{ status: string; homeGoals: number | null; awayGoals: number | null } | null> {
+  try {
+    const res = await client().get("/fixtures", { params: { id: fixtureId } });
+    checkApiErrors(res.data);
+    const item = res.data?.response?.[0];
+    if (!item) return null;
+
+    return {
+      status: item.fixture?.status?.short ?? "NS",
+      homeGoals: item.goals?.home ?? null,
+      awayGoals: item.goals?.away ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Načíta celkový počet rohov a kariet (oba tímy spolu) v už odohranom zápase. */
+export async function getFixtureCornersAndCards(
+  fixtureId: number
+): Promise<{ corners: number | null; cards: number | null }> {
+  try {
+    const res = await client().get("/fixtures/statistics", { params: { fixture: fixtureId } });
+    checkApiErrors(res.data);
+
+    const teams: any[] = res.data?.response ?? [];
+    let totalCorners = 0;
+    let totalCards = 0;
+    let foundCorners = false;
+    let foundCards = false;
+
+    for (const t of teams) {
+      const stats: any[] = t.statistics ?? [];
+      const corner = stats.find((s: any) => s.type === "Corner Kicks");
+      const yellow = stats.find((s: any) => s.type === "Yellow Cards");
+      const red = stats.find((s: any) => s.type === "Red Cards");
+
+      if (typeof corner?.value === "number") {
+        totalCorners += corner.value;
+        foundCorners = true;
+      }
+      if (typeof yellow?.value === "number") {
+        totalCards += yellow.value;
+        foundCards = true;
+      }
+      if (typeof red?.value === "number") {
+        totalCards += red.value;
+        foundCards = true;
+      }
+    }
+
+    return { corners: foundCorners ? totalCorners : null, cards: foundCards ? totalCards : null };
+  } catch {
+    return { corners: null, cards: null };
+  }
+}
+
+/** Vráti ID hráčov, ktorí v tomto zápase reálne skórovali (vlastné góly sa nepočítajú). */
+export async function getFixtureGoalscorerIds(fixtureId: number): Promise<number[]> {
+  try {
+    const res = await client().get("/fixtures/events", { params: { fixture: fixtureId } });
+    checkApiErrors(res.data);
+
+    const events: any[] = res.data?.response ?? [];
+    return events
+      .filter((e: any) => e.type === "Goal" && e.detail !== "Own Goal")
+      .map((e: any) => e.player?.id)
+      .filter((id: any): id is number => typeof id === "number");
+  } catch {
+    return [];
+  }
 }

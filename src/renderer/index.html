@@ -39,6 +39,7 @@
       <button class="btn-primary" id="loadFixturesBtn">Načítať zápasy</button>
 
       <div class="sidebar-footer">
+        <button class="btn-ghost" id="openTipsBtn">História tipov</button>
         <button class="btn-ghost" id="openSettingsBtn">Nastavenia API kľúča</button>
       </div>
     </aside>
@@ -74,6 +75,18 @@
       <div class="modal-actions">
         <button class="btn-ghost" id="cancelSettingsBtn">Zrušiť</button>
         <button class="btn-primary" id="saveSettingsBtn">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="tipsModal" hidden>
+    <div class="modal modal-large">
+      <h3>História tipov</h3>
+      <div class="tips-summary" id="tipsSummary"></div>
+      <div class="tips-list" id="tipsList"></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="closeTipsBtn">Zavrieť</button>
+        <button class="btn-primary" id="checkResultsBtn">Skontrolovať výsledky</button>
       </div>
     </div>
   </div>

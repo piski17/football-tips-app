@@ -154,6 +154,27 @@ export interface PredictionResult {
   sampleSizeWarning?: string;
 }
 
+/** Uložený tip na spätné vyhodnotenie (backtesting). */
+export interface SavedTip {
+  id: string;
+  fixtureId: number;
+  leagueId: number;
+  season: number;
+  leagueName: string;
+  homeTeam: string;
+  awayTeam: string;
+  matchDate: string; // ISO
+  market: string; // napr. "Výsledok zápasu", "Góly", "Rohy"...
+  selection: string; // napr. "Over 2.5", "Výhra Chelsea"
+  probability: number;
+  savedAt: string; // ISO
+  status: "pending" | "won" | "lost" | "void";
+  actualHomeGoals?: number | null;
+  actualAwayGoals?: number | null;
+  playerId?: number;
+  playerName?: string;
+}
+
 export interface LeaguePreset {
   id: number; // ID ligy v API-Football, napr. 39 pre Premier League
   name: string;

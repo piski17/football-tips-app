@@ -11,9 +11,14 @@ import {
   getTeamSquad,
   getPlayerSeasonStats,
   getTeamPlayersWithStats,
+  getFixtureResult,
+  getFixtureCornersAndCards,
+  getFixtureGoalscorerIds,
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
-import { LeaguePreset } from "./types";
+import { LeaguePreset, SavedTip } from "./types";
+import { saveTip, listTips, updateTip, deleteTip } from "./tipsStore";
+import { evaluateTip } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
 const LEAGUE_PRESETS: LeaguePreset[] = [
@@ -161,3 +166,49 @@ ipcMain.handle(
     );
   }
 );
+
+// ---- Uložené tipy (spätné vyhodnotenie) ----
+
+ipcMain.handle("tips:save", (_e, tip: SavedTip) => {
+  saveTip(tip);
+  return true;
+});
+
+ipcMain.handle("tips:list", () => {
+  return listTips();
+});
+
+ipcMain.handle("tips:delete", (_e, id: string) => {
+  deleteTip(id);
+  return true;
+});
+
+ipcMain.handle("tips:checkResults", async () => {
+  const tips = listTips();
+  const pending = tips.filter((t) => t.status === "pending");
+
+  for (const tip of pending) {
+    const result = await getFixtureResult(tip.fixtureId);
+    if (!result || result.status !== "FT" || result.homeGoals == null || result.awayGoals == null) {
+      continue; // zápas sa ešte neodohral, alebo výsledok nie je k dispozícii
+    }
+
+    let corners: number | null = null;
+    let cards: number | null = null;
+    if (tip.market === "Rohy" || tip.market === "Karty") {
+      const stats = await getFixtureCornersAndCards(tip.fixtureId);
+      corners = stats.corners;
+      cards = stats.cards;
+    }
+
+    let scorerIds: number[] | null = null;
+    if (tip.market === "Strelec gólov") {
+      scorerIds = await getFixtureGoalscorerIds(tip.fixtureId);
+    }
+
+    const status = evaluateTip(tip, result.homeGoals, result.awayGoals, corners, cards, scorerIds);
+    updateTip(tip.id, { status, actualHomeGoals: result.homeGoals, actualAwayGoals: result.awayGoals });
+  }
+
+  return listTips();
+});

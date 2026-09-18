@@ -23,4 +23,9 @@ contextBridge.exposeInMainWorld("api", {
     teamExpectedGoalsThisMatch: number;
     teamSeasonGoalsPerGame: number;
   }) => ipcRenderer.invoke("player:analyzeGoal", payload),
+
+  saveTip: (tip: any) => ipcRenderer.invoke("tips:save", tip),
+  listTips: () => ipcRenderer.invoke("tips:list"),
+  deleteTip: (id: string) => ipcRenderer.invoke("tips:delete", id),
+  checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),
 });
