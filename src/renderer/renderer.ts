@@ -110,7 +110,7 @@ async function init() {
   }
 }
 
-async function loadFixtures() {
+async function loadFixtures(silent: boolean = false) {
   const season = parseInt(seasonInput.value, 10);
   const date = matchDateInput.value || new Date().toISOString().slice(0, 10);
 
@@ -119,18 +119,22 @@ async function loadFixtures() {
   if (customId) leagueIds.add(customId);
 
   if (leagueIds.size === 0) {
-    fixtureListEl.innerHTML = `<p class="empty-state">Zaškrtni aspoň jednu ligu, alebo zadaj vlastné ID ligy.</p>`;
+    if (!silent) {
+      fixtureListEl.innerHTML = `<p class="empty-state">Zaškrtni aspoň jednu ligu, alebo zadaj vlastné ID ligy.</p>`;
+    }
     return;
   }
 
   const hasKey = await window.api.hasApiKey();
   if (!hasKey) {
-    openSettings();
+    if (!silent) openSettings();
     return;
   }
 
-  fixtureListEl.innerHTML = `<div class="loading-state">Načítavam zápasy…</div>`;
-  loadFixturesBtn.disabled = true;
+  if (!silent) {
+    fixtureListEl.innerHTML = `<div class="loading-state">Načítavam zápasy…</div>`;
+    loadFixturesBtn.disabled = true;
+  }
 
   try {
     const results = await Promise.all(
@@ -147,15 +151,23 @@ async function loadFixtures() {
     currentFixtures = results.flatMap((r) => r.fixtures);
     renderGroupedFixtureList(results);
   } catch (err: any) {
-    fixtureListEl.innerHTML = `<p class="empty-state">Chyba pri načítaní: ${escapeHtml(
-      err?.message ?? String(err)
-    )}</p>`;
+    if (!silent) {
+      fixtureListEl.innerHTML = `<p class="empty-state">Chyba pri načítaní: ${escapeHtml(
+        err?.message ?? String(err)
+      )}</p>`;
+    }
   } finally {
-    loadFixturesBtn.disabled = false;
+    if (!silent) loadFixturesBtn.disabled = false;
   }
 }
 
-loadFixturesBtn.addEventListener("click", loadFixtures);
+loadFixturesBtn.addEventListener("click", () => loadFixtures(false));
+
+// Appka si sama každých pár minút znova natiahne zoznam zápasov (potichu, bez
+// blikania), aby dohraté zápasy automaticky zmizli bez potreby čokoľvek klikať.
+setInterval(() => {
+  loadFixtures(true);
+}, 3 * 60 * 1000); // 3 minúty
 
 function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: any[] }>) {
   const totalCount = results.reduce((sum, r) => sum + r.fixtures.length, 0);
