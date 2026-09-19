@@ -35,6 +35,7 @@ let selectedLeagueIds: Set<number> = new Set();
 let currentFixtures: any[] = [];
 let selectedFixtureId: number | null = null;
 let currentAnalysis: any = null; // posledný výsledok analyzeFixture, používa sa pre strelcov gólov
+let collapsedLeagues: Set<string> = new Set(); // ligy schované cez tlačidlo, zostáva aj po automatickom obnovení
 
 const customLeagueInput = document.getElementById("customLeagueId") as HTMLInputElement;
 const toggleCustomLeagueBtn = document.getElementById("toggleCustomLeagueBtn") as HTMLButtonElement;
@@ -184,10 +185,25 @@ function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: a
 
   groupsWithMatches.forEach(({ fixtures }) => {
     const leagueName = fixtures[0]?.league?.name ?? "Liga";
-    const header = document.createElement("div");
+    const isCollapsed = collapsedLeagues.has(leagueName);
+
+    const group = document.createElement("div");
+    group.className = "league-group";
+
+    const header = document.createElement("button");
     header.className = "league-group-header";
-    header.textContent = leagueName;
-    fixtureListEl.appendChild(header);
+    header.innerHTML = `<span>${escapeHtml(leagueName)}</span><span class="chevron">${isCollapsed ? "▸" : "▾"}</span>`;
+    header.addEventListener("click", () => {
+      if (collapsedLeagues.has(leagueName)) collapsedLeagues.delete(leagueName);
+      else collapsedLeagues.add(leagueName);
+      rowsContainer.hidden = collapsedLeagues.has(leagueName);
+      header.querySelector(".chevron")!.textContent = collapsedLeagues.has(leagueName) ? "▸" : "▾";
+    });
+    group.appendChild(header);
+
+    const rowsContainer = document.createElement("div");
+    rowsContainer.className = "league-group-rows";
+    rowsContainer.hidden = isCollapsed;
 
     fixtures.forEach((fixture: any) => {
       const row = document.createElement("div");
@@ -218,8 +234,11 @@ function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: a
         analyzeFixture(fixture, fixture.league.id, fixture.league.season);
       });
 
-      fixtureListEl.appendChild(row);
+      rowsContainer.appendChild(row);
     });
+
+    group.appendChild(rowsContainer);
+    fixtureListEl.appendChild(group);
   });
 }
 

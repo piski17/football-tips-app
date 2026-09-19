@@ -144,20 +144,52 @@ button, input {
   color: var(--text-muted);
 }
 
+.league-group {
+  display: flex;
+  flex-direction: column;
+}
+
 .league-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
   color: var(--gold);
   padding: 14px 12px 6px;
-  border-top: 1px solid var(--border);
   margin-top: 4px;
+  text-align: left;
 }
 
-.league-group-header:first-child {
+.league-group:first-child .league-group-header {
   border-top: none;
   margin-top: 0;
   padding-top: 4px;
+}
+
+.league-group-header:hover {
+  color: var(--accent-strong);
+}
+
+.league-group-header .chevron {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.league-group-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.league-group-rows[hidden] {
+  display: none;
 }
 
 .field-group {
