@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import * as path from "path";
-import { getApiKey, setApiKey, hasApiKey } from "./config";
+import { getApiKey, setApiKey, hasApiKey, getWebSyncSettings, setWebSyncSettings, WebSyncSettings } from "./config";
 import {
   getFixturesByLeague,
   getTeamStatistics,
@@ -18,7 +18,7 @@ import {
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset, SavedTip } from "./types";
-import { saveTip, listTips, updateTip, deleteTip } from "./tipsStore";
+import { saveTip, listTips, updateTip, deleteTip, clearAllTips, checkResultsRemote } from "./tipsStore";
 import { evaluateTip } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -174,22 +174,32 @@ ipcMain.handle(
 
 // ---- Uložené tipy (spätné vyhodnotenie) ----
 
-ipcMain.handle("tips:save", (_e, tip: SavedTip) => {
-  saveTip(tip);
+ipcMain.handle("tips:save", async (_e, tip: SavedTip) => {
+  await saveTip(tip);
   return true;
 });
 
-ipcMain.handle("tips:list", () => {
-  return listTips();
+ipcMain.handle("tips:list", async () => {
+  return await listTips();
 });
 
-ipcMain.handle("tips:delete", (_e, id: string) => {
-  deleteTip(id);
+ipcMain.handle("tips:delete", async (_e, id: string) => {
+  await deleteTip(id);
+  return true;
+});
+
+ipcMain.handle("tips:clearAll", async () => {
+  await clearAllTips();
   return true;
 });
 
 ipcMain.handle("tips:checkResults", async () => {
-  const tips = listTips();
+  // Ak je zapnutá synchronizácia s webovou appkou, kontrolu výsledkov
+  // vykoná rovno ona (má rovnakú logiku) a appka len prevezme jej odpoveď.
+  const remoteResult = await checkResultsRemote();
+  if (remoteResult !== null) return remoteResult;
+
+  const tips = await listTips();
   const pending = tips.filter((t) => t.status === "pending");
 
   for (const tip of pending) {
@@ -212,8 +222,19 @@ ipcMain.handle("tips:checkResults", async () => {
     }
 
     const status = evaluateTip(tip, result.homeGoals, result.awayGoals, corners, cards, scorerIds);
-    updateTip(tip.id, { status, actualHomeGoals: result.homeGoals, actualAwayGoals: result.awayGoals });
+    await updateTip(tip.id, { status, actualHomeGoals: result.homeGoals, actualAwayGoals: result.awayGoals });
   }
 
-  return listTips();
+  return await listTips();
+});
+
+// ---- Nastavenia synchronizácie s webovou appkou ----
+
+ipcMain.handle("websync:get", () => {
+  return getWebSyncSettings();
+});
+
+ipcMain.handle("websync:set", (_e, settings: WebSyncSettings) => {
+  setWebSyncSettings(settings);
+  return true;
 });

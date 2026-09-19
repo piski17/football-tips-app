@@ -40,6 +40,7 @@
 
       <div class="sidebar-footer">
         <button class="btn-ghost" id="openTipsBtn">História tipov</button>
+        <button class="btn-ghost" id="openWebSyncBtn">Synchronizácia s webom</button>
         <button class="btn-ghost" id="openSettingsBtn">Nastavenia API kľúča</button>
       </div>
     </aside>
@@ -85,8 +86,28 @@
       <div class="tips-summary" id="tipsSummary"></div>
       <div class="tips-list" id="tipsList"></div>
       <div class="modal-actions">
+        <button class="btn-ghost" id="clearAllTipsBtn" style="color: var(--danger); margin-right: auto;">Vymazať všetky tipy</button>
         <button class="btn-ghost" id="closeTipsBtn">Zavrieť</button>
         <button class="btn-primary" id="checkResultsBtn">Skontrolovať výsledky</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="webSyncModal" hidden>
+    <div class="modal">
+      <h3>Synchronizácia s webovou appkou</h3>
+      <p class="muted small">
+        Ak vyplníš adresu tvojej webovej appky, tipy sa budú ukladať priamo tam
+        namiesto lokálneho súboru - takže appka aj web budú vždy zdieľať tie
+        isté tipy. Nechaj prázdne, ak chceš pokračovať len s lokálnym ukladaním.
+      </p>
+      <input type="text" id="webSyncUrlInput" placeholder="napr. https://football-tips-web.onrender.com" />
+      <p class="muted small">Ak máš web appku chránenú heslom (Basic Auth), vyplň aj toto - inak nechaj prázdne:</p>
+      <input type="text" id="webSyncUserInput" placeholder="Meno (voliteľné)" />
+      <input type="password" id="webSyncPasswordInput" placeholder="Heslo (voliteľné)" />
+      <div class="modal-actions">
+        <button class="btn-ghost" id="cancelWebSyncBtn">Zrušiť</button>
+        <button class="btn-primary" id="saveWebSyncBtn">Uložiť</button>
       </div>
     </div>
   </div>

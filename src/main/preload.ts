@@ -28,4 +28,9 @@ contextBridge.exposeInMainWorld("api", {
   listTips: () => ipcRenderer.invoke("tips:list"),
   deleteTip: (id: string) => ipcRenderer.invoke("tips:delete", id),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),
+  clearAllTips: () => ipcRenderer.invoke("tips:clearAll"),
+
+  getWebSyncSettings: () => ipcRenderer.invoke("websync:get"),
+  setWebSyncSettings: (settings: { url: string; user: string; password: string }) =>
+    ipcRenderer.invoke("websync:set", settings),
 });

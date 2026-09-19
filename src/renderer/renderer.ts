@@ -20,6 +20,9 @@ interface FootballApi {
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
   checkTipResults(): Promise<any[]>;
+  clearAllTips(): Promise<boolean>;
+  getWebSyncSettings(): Promise<{ url: string; user: string; password: string }>;
+  setWebSyncSettings(settings: { url: string; user: string; password: string }): Promise<boolean>;
 }
 
 declare global {
@@ -49,11 +52,20 @@ const cancelSettingsBtn = document.getElementById("cancelSettingsBtn") as HTMLBu
 const saveSettingsBtn = document.getElementById("saveSettingsBtn") as HTMLButtonElement;
 
 const openTipsBtn = document.getElementById("openTipsBtn") as HTMLButtonElement;
+
+const openWebSyncBtn = document.getElementById("openWebSyncBtn") as HTMLButtonElement;
+const webSyncModal = document.getElementById("webSyncModal") as HTMLElement;
+const webSyncUrlInput = document.getElementById("webSyncUrlInput") as HTMLInputElement;
+const webSyncUserInput = document.getElementById("webSyncUserInput") as HTMLInputElement;
+const webSyncPasswordInput = document.getElementById("webSyncPasswordInput") as HTMLInputElement;
+const cancelWebSyncBtn = document.getElementById("cancelWebSyncBtn") as HTMLButtonElement;
+const saveWebSyncBtn = document.getElementById("saveWebSyncBtn") as HTMLButtonElement;
 const tipsModal = document.getElementById("tipsModal") as HTMLElement;
 const tipsSummaryEl = document.getElementById("tipsSummary") as HTMLElement;
 const tipsListEl = document.getElementById("tipsList") as HTMLElement;
 const closeTipsBtn = document.getElementById("closeTipsBtn") as HTMLButtonElement;
 const checkResultsBtn = document.getElementById("checkResultsBtn") as HTMLButtonElement;
+const clearAllTipsBtn = document.getElementById("clearAllTipsBtn") as HTMLButtonElement;
 
 /**
  * Odhadne sezónu (rok jej začiatku) podľa zvoleného dátumu. Väčšina top
@@ -547,7 +559,11 @@ function renderTipsList(tips: any[]) {
             <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(t.selection)} · ${t.probability.toFixed(0)}%</div>
           </div>
           <span class="tip-status ${t.status}">${statusLabel}</span>
-          <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>
+          ${
+            t.status === "pending"
+              ? `<button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
+              : ""
+          }
         </div>
       `;
     })
@@ -578,6 +594,44 @@ checkResultsBtn.addEventListener("click", async () => {
     checkResultsBtn.disabled = false;
     checkResultsBtn.textContent = "Skontrolovať výsledky";
   }
+});
+
+clearAllTipsBtn.addEventListener("click", async () => {
+  const confirmed = window.confirm(
+    "Naozaj chceš vymazať ÚPLNE VŠETKY uložené tipy (aj už vyhodnotené)? Táto akcia sa nedá vrátiť späť."
+  );
+  if (!confirmed) return;
+
+  clearAllTipsBtn.disabled = true;
+  try {
+    await window.api.clearAllTips();
+    renderTipsList([]);
+  } finally {
+    clearAllTipsBtn.disabled = false;
+  }
+});
+
+// ---- Synchronizácia s webovou appkou ----
+
+openWebSyncBtn.addEventListener("click", async () => {
+  webSyncModal.hidden = false;
+  const current = await window.api.getWebSyncSettings();
+  webSyncUrlInput.value = current.url ?? "";
+  webSyncUserInput.value = current.user ?? "";
+  webSyncPasswordInput.value = current.password ?? "";
+});
+
+cancelWebSyncBtn.addEventListener("click", () => {
+  webSyncModal.hidden = true;
+});
+
+saveWebSyncBtn.addEventListener("click", async () => {
+  await window.api.setWebSyncSettings({
+    url: webSyncUrlInput.value,
+    user: webSyncUserInput.value,
+    password: webSyncPasswordInput.value,
+  });
+  webSyncModal.hidden = true;
 });
 
 init();
