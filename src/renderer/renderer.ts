@@ -536,8 +536,14 @@ function initSaveTipButton(r: any) {
 async function openTipsHistory() {
   tipsModal.hidden = false;
   tipsListEl.innerHTML = `<div class="loading-state">Načítavam tipy…</div>`;
-  const tips = await window.api.listTips();
-  renderTipsList(tips);
+  try {
+    const tips = await window.api.listTips();
+    renderTipsList(tips);
+  } catch (err: any) {
+    tipsListEl.innerHTML = `<p class="empty-state">Tipy sa nepodarilo načítať: ${escapeHtml(
+      err?.message ?? String(err)
+    )}</p>`;
+  }
 }
 
 function renderTipsList(tips: any[]) {
@@ -586,8 +592,14 @@ function renderTipsList(tips: any[]) {
     btn.addEventListener("click", async (e) => {
       const id = (e.currentTarget as HTMLElement).dataset.tipId;
       if (!id) return;
-      await window.api.deleteTip(id);
-      openTipsHistory();
+      (btn as HTMLButtonElement).disabled = true;
+      try {
+        await window.api.deleteTip(id);
+      } catch (err: any) {
+        alert(`Zmazanie zlyhalo: ${err?.message ?? String(err)}. Skús to prosím znova.`);
+      } finally {
+        openTipsHistory();
+      }
     });
   });
 }
@@ -603,6 +615,8 @@ checkResultsBtn.addEventListener("click", async () => {
   try {
     const tips = await window.api.checkTipResults();
     renderTipsList(tips);
+  } catch (err: any) {
+    alert(`Kontrola výsledkov zlyhala: ${err?.message ?? String(err)}`);
   } finally {
     checkResultsBtn.disabled = false;
     checkResultsBtn.textContent = "Skontrolovať výsledky";
@@ -619,6 +633,8 @@ clearAllTipsBtn.addEventListener("click", async () => {
   try {
     await window.api.clearAllTips();
     renderTipsList([]);
+  } catch (err: any) {
+    alert(`Vymazanie zlyhalo: ${err?.message ?? String(err)}. Skús to prosím znova.`);
   } finally {
     clearAllTipsBtn.disabled = false;
   }
