@@ -6,53 +6,40 @@
   <title>Futbal Tipy</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar">
+    <header class="topbar">
       <div class="brand">
         <span class="brand-mark"></span>
         <h1>Futbal Tipy</h1>
       </div>
 
-      <nav class="league-list" id="leagueList">
-        <!-- naplnené skriptom -->
-      </nav>
-
-      <div class="field-group">
-        <label for="customLeagueId">Vlastné ID ligy</label>
-        <input type="number" id="customLeagueId" placeholder="napr. 39" />
+      <div class="topbar-controls">
+        <input type="date" id="matchDateInput" class="date-input" />
+        <input type="number" id="seasonInput" value="2025" readonly hidden />
+        <button class="btn-ghost" id="toggleCustomLeagueBtn" title="Pridať vlastnú ligu">+ Liga</button>
+        <input type="number" id="customLeagueId" class="custom-league-input" placeholder="ID ligy" hidden />
+        <button class="btn-primary" id="loadFixturesBtn" title="Obnoviť zápasy">↻</button>
       </div>
 
-      <div class="field-group">
-        <label for="matchDateInput">Herný deň</label>
-        <input type="date" id="matchDateInput" />
-      </div>
-
-      <div class="field-group">
-        <label for="seasonInput">Sezóna (vypočítaná automaticky)</label>
-        <input type="number" id="seasonInput" value="2025" readonly />
-      </div>
-
-      <button class="btn-primary" id="loadFixturesBtn">Načítať zápasy</button>
-
-      <div class="sidebar-footer">
+      <div class="topbar-menu">
         <button class="btn-ghost" id="openTipsBtn">História tipov</button>
-        <button class="btn-ghost" id="openWebSyncBtn">Synchronizácia s webom</button>
-        <button class="btn-ghost" id="openSettingsBtn">Nastavenia API kľúča</button>
+        <button class="btn-ghost" id="openWebSyncBtn">Synchronizácia</button>
+        <button class="btn-ghost" id="openSettingsBtn">API kľúč</button>
       </div>
-    </aside>
+    </header>
 
     <main class="content">
       <section class="fixture-column">
         <div class="column-header">
-          <h2>Zápasy v daný deň</h2>
+          <h2>Zápasy dnes</h2>
           <span class="muted" id="fixtureCount"></span>
         </div>
         <div class="fixture-list" id="fixtureList">
-          <p class="empty-state">Vyber ligu vľavo a klikni na „Načítať zápasy“.</p>
+          <p class="empty-state">Načítavam zápasy…</p>
         </div>
       </section>
 

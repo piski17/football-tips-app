@@ -31,13 +31,13 @@ declare global {
   }
 }
 
-let selectedLeagueId: number | null = null;
+let selectedLeagueIds: Set<number> = new Set();
 let currentFixtures: any[] = [];
 let selectedFixtureId: number | null = null;
 let currentAnalysis: any = null; // posledný výsledok analyzeFixture, používa sa pre strelcov gólov
 
-const leagueListEl = document.getElementById("leagueList") as HTMLElement;
 const customLeagueInput = document.getElementById("customLeagueId") as HTMLInputElement;
+const toggleCustomLeagueBtn = document.getElementById("toggleCustomLeagueBtn") as HTMLButtonElement;
 const seasonInput = document.getElementById("seasonInput") as HTMLInputElement;
 const matchDateInput = document.getElementById("matchDateInput") as HTMLInputElement;
 const loadFixturesBtn = document.getElementById("loadFixturesBtn") as HTMLButtonElement;
@@ -79,12 +79,20 @@ function guessSeasonFromDate(dateStr: string): number {
   return month >= 7 ? d.getFullYear() : d.getFullYear() - 1;
 }
 
+toggleCustomLeagueBtn.addEventListener("click", () => {
+  customLeagueInput.hidden = !customLeagueInput.hidden;
+  if (!customLeagueInput.hidden) customLeagueInput.focus();
+});
+
+customLeagueInput.addEventListener("change", () => loadFixtures());
+
 async function init() {
   matchDateInput.value = new Date().toISOString().slice(0, 10);
   seasonInput.value = String(guessSeasonFromDate(matchDateInput.value));
 
   matchDateInput.addEventListener("change", () => {
     seasonInput.value = String(guessSeasonFromDate(matchDateInput.value));
+    loadFixtures();
   });
 
   const hasKey = await window.api.hasApiKey();
@@ -93,39 +101,25 @@ async function init() {
   }
 
   const leagues = await window.api.getLeaguePresets();
-  leagueListEl.innerHTML = "";
-  leagues.forEach((league) => {
-    const item = document.createElement("div");
-    item.className = "league-item";
-    item.dataset.leagueId = String(league.id);
-    item.innerHTML = `<span class="name">${escapeHtml(league.name)}</span><span class="country">${escapeHtml(
-      league.country
-    )}</span>`;
-    item.addEventListener("click", () => selectLeague(league.id, item));
-    leagueListEl.appendChild(item);
-  });
-}
+  leagues.forEach((league) => selectedLeagueIds.add(league.id)); // všetky ligy sú vždy zahrnuté
 
-function selectLeague(id: number, el: HTMLElement) {
-  selectedLeagueId = id;
-  customLeagueInput.value = "";
-  document.querySelectorAll(".league-item").forEach((n) => n.classList.remove("active"));
-  el.classList.add("active");
-}
-
-function getActiveLeagueId(): number | null {
-  if (customLeagueInput.value.trim()) {
-    return parseInt(customLeagueInput.value.trim(), 10);
+  // Ak už máme API kľúč, appka rovno pri otvorení sama načíta dnešné
+  // zápasy - netreba na nič klikať.
+  if (hasKey) {
+    loadFixtures();
   }
-  return selectedLeagueId;
 }
 
-loadFixturesBtn.addEventListener("click", async () => {
-  const leagueId = getActiveLeagueId();
+async function loadFixtures() {
   const season = parseInt(seasonInput.value, 10);
+  const date = matchDateInput.value || new Date().toISOString().slice(0, 10);
 
-  if (!leagueId) {
-    fixtureListEl.innerHTML = `<p class="empty-state">Vyber ligu vľavo, alebo zadaj vlastné ID ligy.</p>`;
+  const leagueIds = new Set(selectedLeagueIds);
+  const customId = customLeagueInput.value.trim() ? parseInt(customLeagueInput.value.trim(), 10) : null;
+  if (customId) leagueIds.add(customId);
+
+  if (leagueIds.size === 0) {
+    fixtureListEl.innerHTML = `<p class="empty-state">Zaškrtni aspoň jednu ligu, alebo zadaj vlastné ID ligy.</p>`;
     return;
   }
 
@@ -139,14 +133,19 @@ loadFixturesBtn.addEventListener("click", async () => {
   loadFixturesBtn.disabled = true;
 
   try {
-    const fixtures = await window.api.getFixturesByLeague(
-      leagueId,
-      season,
-      20,
-      matchDateInput.value || new Date().toISOString().slice(0, 10)
+    const results = await Promise.all(
+      Array.from(leagueIds).map(async (leagueId) => {
+        try {
+          const fixtures = await window.api.getFixturesByLeague(leagueId, season, 20, date);
+          return { leagueId, fixtures };
+        } catch {
+          return { leagueId, fixtures: [] as any[] };
+        }
+      })
     );
-    currentFixtures = fixtures;
-    renderFixtureList(fixtures, leagueId, season);
+
+    currentFixtures = results.flatMap((r) => r.fixtures);
+    renderGroupedFixtureList(results);
   } catch (err: any) {
     fixtureListEl.innerHTML = `<p class="empty-state">Chyba pri načítaní: ${escapeHtml(
       err?.message ?? String(err)
@@ -154,47 +153,61 @@ loadFixturesBtn.addEventListener("click", async () => {
   } finally {
     loadFixturesBtn.disabled = false;
   }
-});
+}
 
-function renderFixtureList(fixtures: any[], leagueId: number, season: number) {
-  fixtureCountEl.textContent = fixtures.length ? `${fixtures.length} zápasov` : "";
+loadFixturesBtn.addEventListener("click", loadFixtures);
 
-  if (!fixtures.length) {
-    fixtureListEl.innerHTML = `<p class="empty-state">Pre túto ligu sa v tento deň nekonajú žiadne zápasy.</p>`;
+function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: any[] }>) {
+  const totalCount = results.reduce((sum, r) => sum + r.fixtures.length, 0);
+  fixtureCountEl.textContent = totalCount ? `${totalCount} zápasov` : "";
+
+  const groupsWithMatches = results.filter((r) => r.fixtures.length > 0);
+
+  if (groupsWithMatches.length === 0) {
+    fixtureListEl.innerHTML = `<p class="empty-state">Pre vybrané ligy sa v tento deň nekonajú žiadne zápasy.</p>`;
     return;
   }
 
   fixtureListEl.innerHTML = "";
-  fixtures.forEach((fixture) => {
-    const row = document.createElement("div");
-    row.className = "fixture-row";
-    row.dataset.fixtureId = String(fixture.fixtureId);
 
-    const date = new Date(fixture.date);
-    const time = date.toLocaleString("sk-SK", {
-      day: "2-digit",
-      month: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
+  groupsWithMatches.forEach(({ fixtures }) => {
+    const leagueName = fixtures[0]?.league?.name ?? "Liga";
+    const header = document.createElement("div");
+    header.className = "league-group-header";
+    header.textContent = leagueName;
+    fixtureListEl.appendChild(header);
+
+    fixtures.forEach((fixture: any) => {
+      const row = document.createElement("div");
+      row.className = "fixture-row";
+      row.dataset.fixtureId = String(fixture.fixtureId);
+
+      const date = new Date(fixture.date);
+      const time = date.toLocaleString("sk-SK", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      row.innerHTML = `
+        <div class="time">${escapeHtml(time)}</div>
+        <div class="teams">
+          <span class="team-name">${escapeHtml(fixture.homeTeam.name)}</span>
+          <span class="vs">vs</span>
+          <span class="team-name">${escapeHtml(fixture.awayTeam.name)}</span>
+        </div>
+      `;
+
+      row.addEventListener("click", () => {
+        document.querySelectorAll(".fixture-row").forEach((n) => n.classList.remove("selected"));
+        row.classList.add("selected");
+        selectedFixtureId = fixture.fixtureId;
+        analyzeFixture(fixture, fixture.league.id, fixture.league.season);
+      });
+
+      fixtureListEl.appendChild(row);
     });
-
-    row.innerHTML = `
-      <div class="time">${escapeHtml(time)}</div>
-      <div class="teams">
-        <span class="team-name">${escapeHtml(fixture.homeTeam.name)}</span>
-        <span class="vs">vs</span>
-        <span class="team-name">${escapeHtml(fixture.awayTeam.name)}</span>
-      </div>
-    `;
-
-    row.addEventListener("click", () => {
-      document.querySelectorAll(".fixture-row").forEach((n) => n.classList.remove("selected"));
-      row.classList.add("selected");
-      selectedFixtureId = fixture.fixtureId;
-      analyzeFixture(fixture, leagueId, season);
-    });
-
-    fixtureListEl.appendChild(row);
   });
 }
 

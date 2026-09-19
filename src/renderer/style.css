@@ -10,7 +10,7 @@
   --text: #f1f5f1;
   --text-muted: #8fa391;
 
-  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-display: "Space Grotesk", "Arial", sans-serif;
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -33,21 +33,54 @@ button, input {
 }
 
 .app {
-  display: grid;
-  grid-template-columns: 260px 1fr;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 
-/* ---------- Sidebar ---------- */
+/* ---------- Top bar (nahrádza pôvodný bočný panel) ---------- */
 
-.sidebar {
+.topbar {
   background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 24px 18px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.date-input,
+.custom-league-input {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+.date-input:focus,
+.custom-league-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.custom-league-input {
+  width: 110px;
 }
 
 .brand {
@@ -67,9 +100,9 @@ button, input {
 
 .brand h1 {
   font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   margin: 0;
 }
 
@@ -81,9 +114,9 @@ button, input {
 
 .league-item {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 9px 10px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
   border: 1px solid transparent;
@@ -94,18 +127,37 @@ button, input {
   background: var(--surface-alt);
 }
 
-.league-item.active {
-  background: var(--surface-alt);
-  border-color: var(--accent);
+.league-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .league-item .name {
   font-size: 13.5px;
+  flex: 1;
 }
 
 .league-item .country {
   font-size: 11.5px;
   color: var(--text-muted);
+}
+
+.league-group-header {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold);
+  padding: 14px 12px 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.league-group-header:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 4px;
 }
 
 .field-group {
@@ -161,6 +213,12 @@ button, input {
   cursor: default;
 }
 
+#loadFixturesBtn {
+  padding: 8px 12px;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--text-muted);
@@ -177,18 +235,14 @@ button, input {
   border-color: var(--text-muted);
 }
 
-.sidebar-footer {
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-
 /* ---------- Main content ---------- */
 
 .content {
   display: grid;
   grid-template-columns: 360px 1fr;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .fixture-column {
