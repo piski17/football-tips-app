@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage } from "electron";
 import * as path from "path";
 import { getApiKey, setApiKey, hasApiKey, getWebSyncSettings, setWebSyncSettings, WebSyncSettings } from "./config";
 import {
@@ -54,7 +54,20 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  // Na macOS treba ikonu Docku nastaviť samostatne - BrowserWindow "icon"
+  // tam ovplyvňuje len samotné okno (ktoré na macOS aj tak nezobrazuje ikonu
+  // v titulku), nie appku v Docku.
+  if (process.platform === "darwin" && app.dock) {
+    const dockIcon = nativeImage.createFromPath(
+      path.join(__dirname, "..", "renderer", "assets", "icon-512.png")
+    );
+    if (!dockIcon.isEmpty()) {
+      app.dock.setIcon(dockIcon);
+    }
+  }
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
