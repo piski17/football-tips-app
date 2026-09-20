@@ -257,7 +257,11 @@ async function analyzeFixture(fixture: any, leagueId: number, season: number) {
 }
 
 function renderAnalysis(r: any) {
-  const outcomeLetter = r.tip.outcome; // "1" | "X" | "2"
+  const bestOverallBet = (r.bestBets && r.bestBets[0]) || {
+    market: r.tip.outcomeLabel,
+    selection: "",
+    probability: 0,
+  };
 
   const gamesPlayedHtml = r.seasonGamesPlayed
     ? `<p class="muted small" style="margin: -6px 0 12px;">Odohratých zápasov v tejto sezóne: ${escapeHtml(
@@ -281,36 +285,14 @@ function renderAnalysis(r: any) {
     ${warningHtml}
 
     <div class="tip-callout">
-      <div class="tip-outcome">${outcomeLetter}</div>
+      <div class="tip-outcome">🎯</div>
       <div class="tip-details">
-        <div class="tip-label">${escapeHtml(r.tip.outcomeLabel)}</div>
-        <div class="tip-meta">Istota modelu: ${escapeHtml(r.tip.confidence)} · Odhad gólov: ${escapeHtml(
-    r.tip.goalsMarket
-  )}</div>
+        <div class="tip-label">${escapeHtml(bestOverallBet.market)}: ${escapeHtml(bestOverallBet.selection)}</div>
+        <div class="tip-meta">Najvyššia dôvera zo všetkých trhov · ${bestOverallBet.probability.toFixed(0)}%</div>
       </div>
     </div>
-
-    <div class="best-bets-section">
-      <div class="section-title">Odporúčané tipy (zoradené podľa istoty) - klikni "Uložiť" pri tom, ktorý chceš sledovať</div>
-      <div class="best-bets-list">
-        ${(r.bestBets || [])
-          .map(
-            (bet: any, idx: number) => `
-          <div class="best-bet-row">
-            <div class="best-bet-rank">${idx + 1}.</div>
-            <div class="best-bet-info">
-              <div class="best-bet-market">${escapeHtml(bet.market)}</div>
-              <div class="best-bet-selection">${escapeHtml(bet.selection)}</div>
-            </div>
-            <div class="best-bet-prob">${bet.probability.toFixed(0)}%</div>
-            <button class="tip-save-btn" data-bet-idx="${idx}">Uložiť</button>
-          </div>
-        `
-          )
-          .join("")}
-      </div>
-      <div id="saveTipMsg"></div>
-    </div>
+    <button class="btn-primary" id="saveBestBetBtn" style="width:100%; margin: 4px 0 8px;">Uložiť tento tip</button>
+    <div id="saveTipMsg"></div>
 
     <div class="prob-section">
       <div class="section-title">Pravdepodobnosť výsledku</div>
@@ -329,30 +311,6 @@ function renderAnalysis(r: any) {
       <div class="stat-line"><span>Výhry ${escapeHtml(r.fixture.homeTeam.name)}</span><strong>${r.headToHead.homeWins}</strong></div>
       <div class="stat-line"><span>Remízy</span><strong>${r.headToHead.draws}</strong></div>
       <div class="stat-line"><span>Výhry ${escapeHtml(r.fixture.awayTeam.name)}</span><strong>${r.headToHead.awayWins}</strong></div>
-    </div>
-
-    <div class="markets-grid">
-      <div class="market-card">
-        <div class="market-value">${r.overUnder25.over >= r.overUnder25.under ? r.overUnder25.over.toFixed(0) : r.overUnder25.under.toFixed(0)}%</div>
-        <div class="market-label">${r.overUnder25.over >= r.overUnder25.under ? "Over" : "Under"} 2.5 gólu</div>
-      </div>
-      <div class="market-card">
-        <div class="market-value">${(r.btts.yes >= r.btts.no ? r.btts.yes : r.btts.no).toFixed(0)}%</div>
-        <div class="market-label">Obaja tímy skórujú: ${r.btts.yes >= r.btts.no ? "Áno" : "Nie"}</div>
-      </div>
-      ${
-        r.corners
-          ? `
-      <div class="market-card">
-        <div class="market-value">${r.corners.over >= r.corners.under ? r.corners.over.toFixed(0) : r.corners.under.toFixed(0)}%</div>
-        <div class="market-label">${r.corners.over >= r.corners.under ? "Over" : "Under"} ${r.corners.line} rohov</div>
-      </div>`
-          : ""
-      }
-      <div class="market-card">
-        <div class="market-value">${r.cards.over >= r.cards.under ? r.cards.over.toFixed(0) : r.cards.under.toFixed(0)}%</div>
-        <div class="market-label">${r.cards.over >= r.cards.under ? "Over" : "Under"} ${r.cards.line} kariet</div>
-      </div>
     </div>
 
     <div class="prob-section">
@@ -527,46 +485,42 @@ function wireScorerSaveButtons(r: any) {
 
 function initSaveTipButton(r: any) {
   const msgEl = document.getElementById("saveTipMsg") as HTMLElement | null;
-  const saveButtons = document.querySelectorAll<HTMLButtonElement>(".tip-save-btn");
-  if (!msgEl || !r.bestBets || r.bestBets.length === 0) return;
+  const btn = document.getElementById("saveBestBetBtn") as HTMLButtonElement | null;
+  if (!btn || !msgEl || !r.bestBets || r.bestBets.length === 0) return;
 
-  saveButtons.forEach((btn) => {
-    btn.onclick = async () => {
-      const idx = parseInt(btn.dataset.betIdx ?? "0", 10);
-      const chosenBet = r.bestBets[idx];
-      if (!chosenBet) return;
+  const chosenBet = r.bestBets[0];
 
-      const tip = {
-        id: `${r.fixture.fixtureId}-${Date.now()}`,
-        fixtureId: r.fixture.fixtureId,
-        leagueId: r.fixture.league.id,
-        season: r.fixture.league.season,
-        leagueName: r.fixture.league.name,
-        homeTeam: r.fixture.homeTeam.name,
-        awayTeam: r.fixture.awayTeam.name,
-        matchDate: r.fixture.date,
-        market: chosenBet.market,
-        selection: chosenBet.selection,
-        probability: chosenBet.probability,
-        savedAt: new Date().toISOString(),
-        status: "pending",
-      };
-
-      btn.disabled = true;
-      try {
-        await window.api.saveTip(tip);
-        msgEl.innerHTML = `<p class="muted small" style="margin-top:6px;">✓ Tip uložený (${escapeHtml(
-          chosenBet.market
-        )}: ${escapeHtml(chosenBet.selection)})</p>`;
-      } catch (err: any) {
-        msgEl.innerHTML = `<p class="muted small" style="margin-top:6px;">Uloženie zlyhalo: ${escapeHtml(
-          err?.message ?? String(err)
-        )}</p>`;
-      } finally {
-        btn.disabled = false;
-      }
+  btn.onclick = async () => {
+    const tip = {
+      id: `${r.fixture.fixtureId}-${Date.now()}`,
+      fixtureId: r.fixture.fixtureId,
+      leagueId: r.fixture.league.id,
+      season: r.fixture.league.season,
+      leagueName: r.fixture.league.name,
+      homeTeam: r.fixture.homeTeam.name,
+      awayTeam: r.fixture.awayTeam.name,
+      matchDate: r.fixture.date,
+      market: chosenBet.market,
+      selection: chosenBet.selection,
+      probability: chosenBet.probability,
+      savedAt: new Date().toISOString(),
+      status: "pending",
     };
-  });
+
+    btn.disabled = true;
+    try {
+      await window.api.saveTip(tip);
+      msgEl.innerHTML = `<p class="muted small" style="margin-top:6px;">✓ Tip uložený (${escapeHtml(
+        chosenBet.market
+      )}: ${escapeHtml(chosenBet.selection)})</p>`;
+    } catch (err: any) {
+      msgEl.innerHTML = `<p class="muted small" style="margin-top:6px;">Uloženie zlyhalo: ${escapeHtml(
+        err?.message ?? String(err)
+      )}</p>`;
+    } finally {
+      btn.disabled = false;
+    }
+  };
 }
 
 // ---- História tipov ----
