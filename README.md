@@ -1,4 +1,4 @@
-# Futbal Tipy – desktopová appka na štatistickú analýzu zápasov
+# TipRadar – desktopová appka na štatistickú analýzu zápasov
 
 Electron + TypeScript aplikácia, ktorá cez **football-data.org** načíta
 nadchádzajúce zápasy top európskych líg, ich tabuľkové štatistiky a

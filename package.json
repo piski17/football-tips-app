@@ -1,7 +1,7 @@
 {
-  "name": "football-tips-app",
+  "name": "tipradar-desktop",
   "version": "1.0.0",
-  "description": "Desktopová aplikácia na analýzu futbalových zápasov a generovanie tipov na základe štatistík (API-Football)",
+  "description": "TipRadar - desktopová aplikácia na analýzu futbalových zápasov a generovanie tipov na základe štatistík (API-Football)",
   "main": "dist/main/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json && node scripts/copy-assets.js",
