@@ -259,6 +259,12 @@ async function analyzeFixture(fixture: any, leagueId: number, season: number) {
 function renderAnalysis(r: any) {
   const outcomeLetter = r.tip.outcome; // "1" | "X" | "2"
 
+  const gamesPlayedHtml = r.seasonGamesPlayed
+    ? `<p class="muted small" style="margin: -6px 0 12px;">Odohratých zápasov v tejto sezóne: ${escapeHtml(
+        r.fixture.homeTeam.name
+      )} ${r.seasonGamesPlayed.home}, ${escapeHtml(r.fixture.awayTeam.name)} ${r.seasonGamesPlayed.away}</p>`
+    : "";
+
   const warningHtml = r.sampleSizeWarning
     ? `<div class="disclaimer" style="margin-top:0;margin-bottom:20px;border-top:none;padding-top:0;color:var(--gold);">⚠️ ${escapeHtml(
         r.sampleSizeWarning
@@ -271,6 +277,7 @@ function renderAnalysis(r: any) {
       <h2>${escapeHtml(r.fixture.homeTeam.name)} — ${escapeHtml(r.fixture.awayTeam.name)}</h2>
     </div>
 
+    ${gamesPlayedHtml}
     ${warningHtml}
 
     <div class="tip-callout">
