@@ -88,6 +88,8 @@ const saveWebSyncBtn = document.getElementById("saveWebSyncBtn") as HTMLButtonEl
 const tipsModal = document.getElementById("tipsModal") as HTMLElement;
 const tipsSummaryEl = document.getElementById("tipsSummary") as HTMLElement;
 const marketBreakdownEl = document.getElementById("marketBreakdown") as HTMLElement;
+const bankrollStartInput = document.getElementById("bankrollStartInput") as HTMLInputElement;
+const bankrollResultEl = document.getElementById("bankrollResult") as HTMLElement;
 const tipsListEl = document.getElementById("tipsList") as HTMLElement;
 const closeTipsBtn = document.getElementById("closeTipsBtn") as HTMLButtonElement;
 const checkResultsBtn = document.getElementById("checkResultsBtn") as HTMLButtonElement;
@@ -306,6 +308,11 @@ function renderAnalysis(r: any) {
         <div class="tip-meta">
           ${idx === 0 ? "Najvyššia dôvera zo všetkých trhov · " : ""}${bet.probability.toFixed(0)}%
         </div>
+        ${
+          bet.explanation
+            ? `<div class="tip-explanation">💡 ${escapeHtml(bet.explanation)}</div>`
+            : ""
+        }
       </div>
     </div>
     <div style="display:flex; gap:8px; margin: 4px 0 8px;">
@@ -649,6 +656,10 @@ function renderTicket() {
   });
 }
 
+bankrollStartInput.addEventListener("input", () => {
+  if (lastRenderedTips.length > 0) renderBankrollSimulation(lastRenderedTips);
+});
+
 openTicketBtn.addEventListener("click", () => {
   ticketModal.hidden = false;
   renderTicket();
@@ -731,6 +742,62 @@ async function openTipsHistory() {
   }
 }
 
+let lastRenderedTips: any[] = [];
+
+function stakeTierPercent(probability: number): number {
+  if (probability >= 70) return 0.03; // vyššia dôvera = väčšia sadzba
+  if (probability >= 60) return 0.02;
+  return 0.01;
+}
+
+function renderBankrollSimulation(tips: any[]) {
+  lastRenderedTips = tips;
+
+  const resolved = tips
+    .filter((t) => t.status === "won" || t.status === "lost")
+    .sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+
+  if (resolved.length === 0) {
+    bankrollResultEl.innerHTML = `<p class="muted small">Zatiaľ nemáš žiadne vyhodnotené tipy na simuláciu.</p>`;
+    return;
+  }
+
+  const startingBankroll = parseFloat(bankrollStartInput.value) || 1000;
+  let bankroll = startingBankroll;
+  const history: number[] = [bankroll];
+
+  for (const t of resolved) {
+    const stakePct = stakeTierPercent(t.probability);
+    const stake = bankroll * stakePct;
+    const impliedOdds = 100 / t.probability; // predpokladaný "fér" kurz odvodený z vlastnej pravdepodobnosti modelu
+    bankroll += t.status === "won" ? stake * (impliedOdds - 1) : -stake;
+    history.push(bankroll);
+  }
+
+  const totalReturn = ((bankroll - startingBankroll) / startingBankroll) * 100;
+  const maxVal = Math.max(...history);
+  const minVal = Math.min(...history);
+  const range = maxVal - minVal || 1;
+
+  const barsHtml = history
+    .map((v) => {
+      const heightPct = 10 + ((v - minVal) / range) * 90; // min. 10%, aby bol vidno aj nízky stĺpec
+      return `<div class="bankroll-bar" style="height:${heightPct}%;" title="${v.toFixed(0)}€"></div>`;
+    })
+    .join("");
+
+  bankrollResultEl.innerHTML = `
+    <div class="bankroll-summary">
+      <span>Použitých tipov: <strong>${resolved.length}</strong></span>
+      <span>Konečný bankroll: <strong>${bankroll.toFixed(0)}€</strong></span>
+      <span>Celková zmena: <strong style="color:${totalReturn >= 0 ? "var(--success)" : "var(--danger)"};">${
+    totalReturn >= 0 ? "+" : ""
+  }${totalReturn.toFixed(1)}%</strong></span>
+    </div>
+    <div class="bankroll-chart">${barsHtml}</div>
+  `;
+}
+
 function renderMarketBreakdown(tips: any[]) {
   const decidedTips = tips.filter((t) => t.status === "won" || t.status === "lost");
   if (decidedTips.length === 0) {
@@ -784,6 +851,7 @@ function renderTipsList(tips: any[]) {
   `;
 
   renderMarketBreakdown(tips);
+  renderBankrollSimulation(tips);
 
   if (tips.length === 0) {
     tipsListEl.innerHTML = `<p class="empty-state">Zatiaľ nemáš uložené žiadne tipy.</p>`;
