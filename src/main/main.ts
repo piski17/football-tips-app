@@ -7,7 +7,7 @@ import {
   getHeadToHead,
   getLeagueAverages,
   getHistoricalGoalPriors,
-  getTeamCornersAverage,
+  getTeamExtendedStatsAverages,
   getTeamSquad,
   getPlayerSeasonStats,
   getTeamPlayersWithStats,
@@ -108,7 +108,7 @@ ipcMain.handle(
     const { fixture, leagueId, season } = payload;
 
     // Prvá vlna - rovnaké volania, ktoré boli predtým otestované ako stabilné.
-    const [homeStats, awayStats, h2h, leagueAvg, homePriors, awayPriors, homeCorners, awayCorners] =
+    const [homeStats, awayStats, h2h, leagueAvg, homePriors, awayPriors, homeExtStats, awayExtStats] =
       await Promise.all([
         getTeamStatistics(leagueId, season, fixture.homeTeam.id),
         getTeamStatistics(leagueId, season, fixture.awayTeam.id),
@@ -116,8 +116,8 @@ ipcMain.handle(
         getLeagueAverages(leagueId, season),
         getHistoricalGoalPriors(leagueId, season, fixture.homeTeam.id),
         getHistoricalGoalPriors(leagueId, season, fixture.awayTeam.id),
-        getTeamCornersAverage(leagueId, season, fixture.homeTeam.id),
-        getTeamCornersAverage(leagueId, season, fixture.awayTeam.id),
+        getTeamExtendedStatsAverages(leagueId, season, fixture.homeTeam.id),
+        getTeamExtendedStatsAverages(leagueId, season, fixture.awayTeam.id),
       ]);
 
     // Druhá vlna - súpisky hráčov + potvrdená zostava (ak je k dispozícii),
@@ -138,12 +138,20 @@ ipcMain.handle(
       DEFAULT_WEIGHTS,
       homePriors,
       awayPriors,
-      homeCorners,
-      awayCorners,
+      homeExtStats.corners,
+      awayExtStats.corners,
       homePlayers,
       awayPlayers,
       lineup.homeIds,
-      lineup.awayIds
+      lineup.awayIds,
+      {
+        homeShotsOnGoal: homeExtStats.shotsOnGoal,
+        awayShotsOnGoal: awayExtStats.shotsOnGoal,
+        homeFouls: homeExtStats.fouls,
+        awayFouls: awayExtStats.fouls,
+        homeOffsides: homeExtStats.offsides,
+        awayOffsides: awayExtStats.offsides,
+      }
     );
 
     return result;
@@ -233,10 +241,17 @@ ipcMain.handle("tips:checkResults", async () => {
 
         let corners: number | null = null;
         let cards: number | null = null;
-        if (leg.market === "Rohy" || leg.market === "Karty") {
+        let shotsOnGoal: number | null = null;
+        let fouls: number | null = null;
+        let offsides: number | null = null;
+        const statsMarkets = ["Rohy", "Karty", "Strely na bránu", "Fauly", "Ofsajdy"];
+        if (statsMarkets.includes(leg.market)) {
           const stats = await getFixtureCornersAndCards(leg.fixtureId);
           corners = stats.corners;
           cards = stats.cards;
+          shotsOnGoal = stats.shotsOnGoal;
+          fouls = stats.fouls;
+          offsides = stats.offsides;
         }
 
         let scorerIds: number[] | null = null;
@@ -244,7 +259,17 @@ ipcMain.handle("tips:checkResults", async () => {
           scorerIds = await getFixtureGoalscorerIds(leg.fixtureId);
         }
 
-        leg.status = evaluateTip(leg, result.homeGoals, result.awayGoals, corners, cards, scorerIds);
+        leg.status = evaluateTip(
+          leg,
+          result.homeGoals,
+          result.awayGoals,
+          corners,
+          cards,
+          scorerIds,
+          shotsOnGoal,
+          fouls,
+          offsides
+        );
         leg.actualHomeGoals = result.homeGoals;
         leg.actualAwayGoals = result.awayGoals;
         anyLegChanged = true;
@@ -264,10 +289,17 @@ ipcMain.handle("tips:checkResults", async () => {
 
     let corners: number | null = null;
     let cards: number | null = null;
-    if (tip.market === "Rohy" || tip.market === "Karty") {
+    let shotsOnGoal: number | null = null;
+    let fouls: number | null = null;
+    let offsides: number | null = null;
+    const statsMarkets = ["Rohy", "Karty", "Strely na bránu", "Fauly", "Ofsajdy"];
+    if (statsMarkets.includes(tip.market)) {
       const stats = await getFixtureCornersAndCards(tip.fixtureId);
       corners = stats.corners;
       cards = stats.cards;
+      shotsOnGoal = stats.shotsOnGoal;
+      fouls = stats.fouls;
+      offsides = stats.offsides;
     }
 
     let scorerIds: number[] | null = null;
@@ -275,7 +307,17 @@ ipcMain.handle("tips:checkResults", async () => {
       scorerIds = await getFixtureGoalscorerIds(tip.fixtureId);
     }
 
-    const status = evaluateTip(tip, result.homeGoals, result.awayGoals, corners, cards, scorerIds);
+    const status = evaluateTip(
+      tip,
+      result.homeGoals,
+      result.awayGoals,
+      corners,
+      cards,
+      scorerIds,
+      shotsOnGoal,
+      fouls,
+      offsides
+    );
     await updateTip(tip.id, { status, actualHomeGoals: result.homeGoals, actualAwayGoals: result.awayGoals });
   }
 

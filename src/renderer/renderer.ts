@@ -282,7 +282,7 @@ async function analyzeFixture(fixture: any, leagueId: number, season: number) {
 }
 
 function renderAnalysis(r: any) {
-  const bestBet = (r.bestBets && r.bestBets[0]) || null;
+  const topBets = (r.bestBets || []).slice(0, 3);
 
   const gamesPlayedHtml = r.seasonGamesPlayed
     ? `<p class="muted small" style="margin: -6px 0 12px;">Odohratých zápasov v tejto sezóne: ${escapeHtml(
@@ -296,21 +296,25 @@ function renderAnalysis(r: any) {
       )}</div>`
     : "";
 
-  const topBetsHtml = bestBet
-    ? `
-    <div class="tip-callout">
-      <div class="tip-outcome">🎯</div>
+  const topBetsHtml = topBets
+    .map(
+      (bet: any, idx: number) => `
+    <div class="tip-callout" style="${idx > 0 ? "margin-top:10px;" : ""}">
+      <div class="tip-outcome">${idx === 0 ? "🎯" : idx + 1 + "."}</div>
       <div class="tip-details">
-        <div class="tip-label">${escapeHtml(bestBet.market)}: ${escapeHtml(bestBet.selection)}</div>
-        <div class="tip-meta">Najvyššia dôvera zo všetkých trhov · ${bestBet.probability.toFixed(0)}%</div>
+        <div class="tip-label">${escapeHtml(bet.market)}: ${escapeHtml(bet.selection)}</div>
+        <div class="tip-meta">
+          ${idx === 0 ? "Najvyššia dôvera zo všetkých trhov · " : ""}${bet.probability.toFixed(0)}%
+        </div>
       </div>
     </div>
     <div style="display:flex; gap:8px; margin: 4px 0 8px;">
-      <button class="btn-primary save-best-bet-btn" data-bet-idx="0" style="flex:1;">Uložiť tento tip</button>
-      <button class="btn-ghost add-to-ticket-btn" data-bet-idx="0" style="flex:1;">+ Do tiketu</button>
+      <button class="btn-primary save-best-bet-btn" data-bet-idx="${idx}" style="flex:1;">Uložiť tento tip</button>
+      <button class="btn-ghost add-to-ticket-btn" data-bet-idx="${idx}" style="flex:1;">+ Do tiketu</button>
     </div>
   `
-    : "";
+    )
+    .join("");
 
   analysisColumnEl.innerHTML = `
     <div class="match-header">
