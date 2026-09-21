@@ -26,10 +26,10 @@ function writeAllLocal(tips: SavedTip[]): void {
 
 // ---- Klient na komunikáciu s webovou appkou (ak je nastavená) ----
 
-function webClient() {
+export function webClient() {
   const { url, user, password } = getWebSyncSettings();
   const auth = user && password ? { username: user, password } : undefined;
-  return axios.create({ baseURL: url, timeout: 15000, auth });
+  return axios.create({ baseURL: url, timeout: 30000, auth });
 }
 
 // ---- Verejné funkcie - použijú web appku, ak je nastavená, inak lokálny súbor ----

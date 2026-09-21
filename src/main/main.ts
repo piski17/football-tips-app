@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, nativeImage } from "electron";
 import * as path from "path";
-import { getApiKey, setApiKey, hasApiKey, getWebSyncSettings, setWebSyncSettings, WebSyncSettings } from "./config";
+import { getApiKey, setApiKey, hasApiKey, getWebSyncSettings, setWebSyncSettings, WebSyncSettings, hasWebSync } from "./config";
 import {
   getFixturesByLeague,
   getTeamStatistics,
@@ -18,7 +18,7 @@ import {
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset, SavedTip } from "./types";
-import { saveTip, listTips, updateTip, deleteTip, clearAllTips, checkResultsRemote } from "./tipsStore";
+import { saveTip, listTips, updateTip, deleteTip, clearAllTips, checkResultsRemote, webClient } from "./tipsStore";
 import { evaluateTip, computeTicketStatus } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -105,6 +105,15 @@ ipcMain.handle(
       season: number;
     }
   ) => {
+    // Ak je zapnutá synchronizácia s webovou appkou, analýzu necháme
+    // vypočítať priamo tam - appka len prevezme jej výsledok. Vďaka tomu
+    // appka aj web vždy zobrazujú úplne rovnaké tipy (namiesto toho, aby si
+    // to každý počítal nezávisle a mohol dostať mierne odlišné číslo).
+    if (hasWebSync()) {
+      const res = await webClient().post("/api/analyze", payload);
+      return res.data;
+    }
+
     const { fixture, leagueId, season } = payload;
 
     // Prvá vlna - rovnaké volania, ktoré boli predtým otestované ako stabilné.
