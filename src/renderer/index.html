@@ -2,7 +2,7 @@
 <html lang="sk">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data: https://media.api-sports.io;" />
   <title>TipRadar</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -29,6 +29,12 @@
       </g>
       <text x="215" y="128" font-family="Space Grotesk, Poppins, Arial, sans-serif" font-weight="700" font-size="88" fill="#f1f5f1">Tip<tspan fill="#57c97a">Radar</tspan></text>
     </svg>
+    <div class="splash-progress">
+      <div class="splash-progress-track">
+        <div class="splash-progress-fill" id="splashProgressFill"></div>
+      </div>
+      <div class="splash-progress-pct" id="splashProgressPct">0%</div>
+    </div>
   </div>
 
   <div class="app">
