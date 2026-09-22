@@ -99,3 +99,14 @@ export async function checkResultsRemote(): Promise<SavedTip[] | null> {
   const res = await webClient().post("/api/tips/check-results");
   return res.data ?? [];
 }
+
+/**
+ * Pošle už uložený tip do Telegramu - funguje len pri zapnutej synchronizácii
+ * s webom (Telegram integrácia beží na strane webového servera).
+ */
+export async function sendTipToTelegram(id: string): Promise<void> {
+  if (!hasWebSync()) {
+    throw new Error("Odosielanie do Telegramu funguje len pri zapnutej synchronizácii s webovou appkou.");
+  }
+  await webClient().post(`/api/tips/${id}/telegram`);
+}

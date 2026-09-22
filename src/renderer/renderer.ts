@@ -40,6 +40,7 @@ interface FootballApi {
     teamSeasonGoalsPerGame: number;
   }): Promise<any>;
   saveTip(tip: any): Promise<boolean>;
+  sendTipToTelegram(id: string): Promise<boolean>;
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
   checkTipResults(): Promise<any[]>;
@@ -560,6 +561,16 @@ function wireScorerSaveButtons(r: any) {
   });
 }
 
+async function maybeOfferTelegram(tipId: string) {
+  const send = window.confirm("Odoslať tento tip aj do Telegramu?");
+  if (!send) return;
+  try {
+    await window.api.sendTipToTelegram(tipId);
+  } catch (err: any) {
+    alert(`Odoslanie do Telegramu zlyhalo: ${err?.message ?? String(err)}`);
+  }
+}
+
 function initSaveTipButton(r: any) {
   const msgEl = document.getElementById("saveTipMsg") as HTMLElement | null;
   const buttons = document.querySelectorAll<HTMLButtonElement>(".save-best-bet-btn");
@@ -593,6 +604,7 @@ function initSaveTipButton(r: any) {
         msgEl.innerHTML = `<p class="muted small" style="margin-top:6px;">✓ Tip uložený (${escapeHtml(
           chosenBet.market
         )}: ${escapeHtml(chosenBet.selection)})</p>`;
+        await maybeOfferTelegram(tip.id);
       } catch (err: any) {
         msgEl.innerHTML = `<p class="muted small" style="margin-top:6px;">Uloženie zlyhalo: ${escapeHtml(
           err?.message ?? String(err)
@@ -754,7 +766,7 @@ saveTicketBtn.addEventListener("click", async () => {
     ticketItems = [];
     updateTicketCount();
     renderTicket();
-    alert("Tiket bol uložený do histórie tipov.");
+    await maybeOfferTelegram(ticketTip.id);
   } catch (err: any) {
     alert(`Uloženie tiketu zlyhalo: ${err?.message ?? String(err)}`);
   } finally {

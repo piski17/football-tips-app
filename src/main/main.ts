@@ -18,7 +18,7 @@ import {
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset, SavedTip } from "./types";
-import { saveTip, listTips, updateTip, deleteTip, clearAllTips, checkResultsRemote, webClient } from "./tipsStore";
+import { saveTip, listTips, updateTip, deleteTip, clearAllTips, checkResultsRemote, webClient, sendTipToTelegram } from "./tipsStore";
 import { evaluateTip, computeTicketStatus } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -209,6 +209,11 @@ ipcMain.handle(
 
 ipcMain.handle("tips:save", async (_e, tip: SavedTip) => {
   await saveTip(tip);
+  return true;
+});
+
+ipcMain.handle("tips:sendToTelegram", async (_e, id: string) => {
+  await sendTipToTelegram(id);
   return true;
 });
 
