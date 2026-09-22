@@ -20,6 +20,9 @@ export interface Fixture {
   homeTeam: Team;
   awayTeam: Team;
   status: string;
+  elapsed?: number | null; // odohraná minúta, ak zápas prebieha
+  goalsHome?: number | null; // aktuálne skóre, ak zápas prebieha alebo skončil
+  goalsAway?: number | null;
 }
 
 export interface TeamStatistics {
@@ -211,7 +214,9 @@ export interface SavedTip {
    * status sa počíta z jednotlivých legs (ak čo i len jedna prehrá, prehráva
    * celý tiket - presne ako v skutočnej stávkovej kancelárii). */
   legs?: TicketLeg[];
-  telegramMessageId?: number; // ID správy v Telegrame, ak bol tip tam odoslaný (na prípadné zmazanie)
+  telegramMessageIds?: number[]; // ID správ v Telegrame (môže byť viac pri fotkách), na prípadné zmazanie
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
 }
 
 export interface LeaguePreset {

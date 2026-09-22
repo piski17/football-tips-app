@@ -269,8 +269,19 @@ function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: a
         minute: "2-digit",
       });
 
+      const LIVE_STATUSES = ["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT"];
+      const isLive = LIVE_STATUSES.includes(fixture.status);
+      const liveLabel = fixture.status === "HT" ? "Polčas" : fixture.status === "BT" ? "Prestávka" : `${fixture.elapsed ?? "?"}'`;
+
+      const timeHtml = isLive
+        ? `<div class="time live">
+             <span class="live-dot"></span>${liveLabel}
+             <div class="live-score">${fixture.goalsHome ?? 0}:${fixture.goalsAway ?? 0}</div>
+           </div>`
+        : `<div class="time">${escapeHtml(time)}</div>`;
+
       row.innerHTML = `
-        <div class="time">${escapeHtml(time)}</div>
+        ${timeHtml}
         <div class="teams">
           <div class="team-line">
             ${fixture.homeTeam.logo ? `<img class="team-logo" src="${escapeHtml(fixture.homeTeam.logo)}" alt="" />` : ""}
@@ -534,6 +545,8 @@ function wireScorerSaveButtons(r: any) {
         leagueName: r.fixture.league.name,
         homeTeam: r.fixture.homeTeam.name,
         awayTeam: r.fixture.awayTeam.name,
+        homeTeamLogo: r.fixture.homeTeam.logo,
+        awayTeamLogo: r.fixture.awayTeam.logo,
         matchDate: r.fixture.date,
         market: "Strelec gólov",
         selection: playerName,
@@ -590,6 +603,8 @@ function initSaveTipButton(r: any) {
         leagueName: r.fixture.league.name,
         homeTeam: r.fixture.homeTeam.name,
         awayTeam: r.fixture.awayTeam.name,
+        homeTeamLogo: r.fixture.homeTeam.logo,
+        awayTeamLogo: r.fixture.awayTeam.logo,
         matchDate: r.fixture.date,
         market: chosenBet.market,
         selection: chosenBet.selection,
