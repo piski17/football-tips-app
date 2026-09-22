@@ -18,7 +18,20 @@ import {
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset, SavedTip } from "./types";
-import { saveTip, listTips, updateTip, deleteTip, clearAllTips, checkResultsRemote, webClient, sendTipToTelegram } from "./tipsStore";
+import {
+  saveTip,
+  listTips,
+  updateTip,
+  deleteTip,
+  clearAllTips,
+  checkResultsRemote,
+  webClient,
+  sendTipToTelegram,
+  listSubscribersRemote,
+  addSubscriberRemote,
+  updateSubscriberRemote,
+  deleteSubscriberRemote,
+} from "./tipsStore";
 import { evaluateTip, computeTicketStatus } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -212,8 +225,27 @@ ipcMain.handle("tips:save", async (_e, tip: SavedTip) => {
   return true;
 });
 
-ipcMain.handle("tips:sendToTelegram", async (_e, id: string) => {
-  await sendTipToTelegram(id);
+ipcMain.handle("tips:sendToTelegram", async (_e, id: string, target: "premium" | "vip" | "both") => {
+  await sendTipToTelegram(id, target);
+  return true;
+});
+
+ipcMain.handle("subscribers:list", async () => {
+  return listSubscribersRemote();
+});
+
+ipcMain.handle("subscribers:add", async (_e, subscriber: any) => {
+  await addSubscriberRemote(subscriber);
+  return true;
+});
+
+ipcMain.handle("subscribers:update", async (_e, id: string, updates: any) => {
+  await updateSubscriberRemote(id, updates);
+  return true;
+});
+
+ipcMain.handle("subscribers:delete", async (_e, id: string) => {
+  await deleteSubscriberRemote(id);
   return true;
 });
 

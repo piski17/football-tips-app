@@ -25,7 +25,11 @@ contextBridge.exposeInMainWorld("api", {
   }) => ipcRenderer.invoke("player:analyzeGoal", payload),
 
   saveTip: (tip: any) => ipcRenderer.invoke("tips:save", tip),
-  sendTipToTelegram: (id: string) => ipcRenderer.invoke("tips:sendToTelegram", id),
+  sendTipToTelegram: (id: string, target: string) => ipcRenderer.invoke("tips:sendToTelegram", id, target),
+  listSubscribers: () => ipcRenderer.invoke("subscribers:list"),
+  addSubscriber: (subscriber: any) => ipcRenderer.invoke("subscribers:add", subscriber),
+  updateSubscriber: (id: string, updates: any) => ipcRenderer.invoke("subscribers:update", id, updates),
+  deleteSubscriber: (id: string) => ipcRenderer.invoke("subscribers:delete", id),
   listTips: () => ipcRenderer.invoke("tips:list"),
   deleteTip: (id: string) => ipcRenderer.invoke("tips:delete", id),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),

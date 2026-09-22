@@ -214,7 +214,7 @@ export interface SavedTip {
    * status sa počíta z jednotlivých legs (ak čo i len jedna prehrá, prehráva
    * celý tiket - presne ako v skutočnej stávkovej kancelárii). */
   legs?: TicketLeg[];
-  telegramMessageIds?: number[]; // ID správ v Telegrame (môže byť viac pri fotkách), na prípadné zmazanie
+  telegramMessages?: { chatId: string; messageId: number }[]; // kam presne bola správa poslaná, na prípadné zmazanie
   homeTeamLogo?: string;
   awayTeamLogo?: string;
 }
@@ -255,4 +255,16 @@ export interface PlayerGoalPrediction {
   appearances: number;
   goalsPerGame: number;
   probabilityToScore: number; // 0-100
+}
+
+/** Predplatiteľ služby (osobný alebo skupina/kanál na ďalší predaj) - používa len web appka. */
+export interface Subscriber {
+  id: string;
+  name: string;
+  contact?: string;
+  tier: "individual" | "group";
+  priceEur: number;
+  nextPaymentDue: string; // ISO dátum
+  note?: string;
+  createdAt: string; // ISO
 }

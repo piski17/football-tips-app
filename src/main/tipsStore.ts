@@ -104,9 +104,41 @@ export async function checkResultsRemote(): Promise<SavedTip[] | null> {
  * Pošle už uložený tip do Telegramu - funguje len pri zapnutej synchronizácii
  * s webom (Telegram integrácia beží na strane webového servera).
  */
-export async function sendTipToTelegram(id: string): Promise<void> {
+export async function sendTipToTelegram(id: string, target: "premium" | "vip" | "both"): Promise<void> {
   if (!hasWebSync()) {
     throw new Error("Odosielanie do Telegramu funguje len pri zapnutej synchronizácii s webovou appkou.");
   }
-  await webClient().post(`/api/tips/${id}/telegram`);
+  await webClient().post(`/api/tips/${id}/telegram`, { target });
+}
+
+/**
+ * Správa predplatiteľov beží výhradne na webovom serveri (dáta sú v Upstash
+ * Redis) - appka len preposiela požiadavky tam. Funguje len pri zapnutej
+ * synchronizácii s webom.
+ */
+function requireWebSync(): void {
+  if (!hasWebSync()) {
+    throw new Error("Táto funkcia funguje len pri zapnutej synchronizácii s webovou appkou.");
+  }
+}
+
+export async function listSubscribersRemote(): Promise<any[]> {
+  requireWebSync();
+  const res = await webClient().get("/api/subscribers");
+  return res.data ?? [];
+}
+
+export async function addSubscriberRemote(subscriber: any): Promise<void> {
+  requireWebSync();
+  await webClient().post("/api/subscribers", subscriber);
+}
+
+export async function updateSubscriberRemote(id: string, updates: any): Promise<void> {
+  requireWebSync();
+  await webClient().patch(`/api/subscribers/${id}`, updates);
+}
+
+export async function deleteSubscriberRemote(id: string): Promise<void> {
+  requireWebSync();
+  await webClient().delete(`/api/subscribers/${id}`);
 }

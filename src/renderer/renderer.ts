@@ -40,7 +40,11 @@ interface FootballApi {
     teamSeasonGoalsPerGame: number;
   }): Promise<any>;
   saveTip(tip: any): Promise<boolean>;
-  sendTipToTelegram(id: string): Promise<boolean>;
+  sendTipToTelegram(id: string, target: string): Promise<boolean>;
+  listSubscribers(): Promise<any[]>;
+  addSubscriber(subscriber: any): Promise<boolean>;
+  updateSubscriber(id: string, updates: any): Promise<boolean>;
+  deleteSubscriber(id: string): Promise<boolean>;
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
   checkTipResults(): Promise<any[]>;
@@ -118,6 +122,16 @@ const tipsListEl = document.getElementById("tipsList") as HTMLElement;
 const closeTipsBtn = document.getElementById("closeTipsBtn") as HTMLButtonElement;
 const checkResultsBtn = document.getElementById("checkResultsBtn") as HTMLButtonElement;
 const clearAllTipsBtn = document.getElementById("clearAllTipsBtn") as HTMLButtonElement;
+
+const openSubscribersBtn = document.getElementById("openSubscribersBtn") as HTMLButtonElement;
+const subscribersModal = document.getElementById("subscribersModal") as HTMLElement;
+const subscribersSummaryEl = document.getElementById("subscribersSummary") as HTMLElement;
+const subscribersListEl = document.getElementById("subscribersList") as HTMLElement;
+const closeSubscribersBtn = document.getElementById("closeSubscribersBtn") as HTMLButtonElement;
+const addSubscriberBtn = document.getElementById("addSubscriberBtn") as HTMLButtonElement;
+const subNameInput = document.getElementById("subName") as HTMLInputElement;
+const subContactInput = document.getElementById("subContact") as HTMLInputElement;
+const subTierSelect = document.getElementById("subTier") as HTMLSelectElement;
 
 /**
  * Odhadne sezónu (rok jej začiatku) podľa zvoleného dátumu. Väčšina top
@@ -574,11 +588,38 @@ function wireScorerSaveButtons(r: any) {
   });
 }
 
+function askTelegramTarget(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:320px;">
+        <h3>Odoslať do Telegramu?</h3>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:18px;">
+          <button class="btn-primary" id="tgChoicePremium">📣 PREMIUM kanál</button>
+          <button class="btn-primary" id="tgChoiceVip">👑 VIP kanál</button>
+          <button class="btn-ghost" id="tgChoiceBoth">Oba naraz</button>
+          <button class="btn-ghost" id="tgChoiceNone">Neposielať</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const cleanup = (result: string | null) => {
+      document.body.removeChild(overlay);
+      resolve(result);
+    };
+    overlay.querySelector("#tgChoicePremium")!.addEventListener("click", () => cleanup("premium"));
+    overlay.querySelector("#tgChoiceVip")!.addEventListener("click", () => cleanup("vip"));
+    overlay.querySelector("#tgChoiceBoth")!.addEventListener("click", () => cleanup("both"));
+    overlay.querySelector("#tgChoiceNone")!.addEventListener("click", () => cleanup(null));
+  });
+}
+
 async function maybeOfferTelegram(tipId: string) {
-  const send = window.confirm("Odoslať tento tip aj do Telegramu?");
-  if (!send) return;
+  const target = await askTelegramTarget();
+  if (!target) return;
   try {
-    await window.api.sendTipToTelegram(tipId);
+    await window.api.sendTipToTelegram(tipId, target);
   } catch (err: any) {
     alert(`Odoslanie do Telegramu zlyhalo: ${err?.message ?? String(err)}`);
   }
@@ -995,6 +1036,138 @@ function renderTipsList(tips: any[]) {
 openTipsBtn.addEventListener("click", openTipsHistory);
 closeTipsBtn.addEventListener("click", () => {
   tipsModal.hidden = true;
+});
+
+// ---- Predplatitelia ----
+
+function daysUntil(dateStr: string): number {
+  const diffMs = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function subscriberStatus(sub: any): { label: string; cls: string } {
+  const days = daysUntil(sub.nextPaymentDue);
+  if (days < 0) return { label: "Vypršal", cls: "lost" };
+  if (days <= 3) return { label: `Vyprší o ${days} d.`, cls: "void" };
+  return { label: "Aktívny", cls: "won" };
+}
+
+async function openSubscribers() {
+  subscribersModal.hidden = false;
+  subscribersListEl.innerHTML = `<p class="muted small">Načítavam…</p>`;
+  try {
+    const subs = await window.api.listSubscribers();
+    renderSubscribersList(subs);
+  } catch (err: any) {
+    subscribersListEl.innerHTML = `<p class="muted small">Predplatiteľov sa nepodarilo načítať: ${escapeHtml(
+      err?.message ?? String(err)
+    )}</p>`;
+  }
+}
+
+function renderSubscribersList(subs: any[]) {
+  const activeCount = subs.filter((s) => daysUntil(s.nextPaymentDue) >= 0).length;
+  const monthlyRevenue = subs
+    .filter((s) => daysUntil(s.nextPaymentDue) >= 0)
+    .reduce((sum, s) => sum + (s.priceEur || 0), 0);
+
+  subscribersSummaryEl.innerHTML = `
+    <span>Spolu: <strong>${subs.length}</strong></span>
+    <span>Aktívnych: <strong>${activeCount}</strong></span>
+    <span>Mesačný príjem: <strong>${monthlyRevenue} €</strong></span>
+  `;
+
+  if (subs.length === 0) {
+    subscribersListEl.innerHTML = `<p class="empty-state">Zatiaľ nemáš pridaných žiadnych predplatiteľov.</p>`;
+    return;
+  }
+
+  subscribersListEl.innerHTML = subs
+    .map((s) => {
+      const status = subscriberStatus(s);
+      const tierLabel = s.tier === "group" ? "VIP" : "PREMIUM";
+      const dueDate = new Date(s.nextPaymentDue).toLocaleDateString("sk-SK");
+      return `
+        <div class="tip-row">
+          <div class="tip-row-info">
+            <div class="tip-row-match">${escapeHtml(s.name)} <span class="muted small">(${tierLabel} · ${s.priceEur} €)</span></div>
+            <div class="tip-row-market">${escapeHtml(s.contact || "")} · najbližšia platba: ${dueDate}</div>
+          </div>
+          <span class="tip-status ${status.cls}">${status.label}</span>
+          <button class="tip-delete-btn" data-extend-id="${s.id}" title="Predĺžiť o mesiac" style="background:var(--surface-alt); color:var(--gold-bright); border-radius:6px; padding:4px 8px; font-size:12px;">+30d</button>
+          <button class="tip-delete-btn" data-remove-id="${s.id}" title="Zmazať">✕</button>
+        </div>
+      `;
+    })
+    .join("");
+
+  subscribersListEl.querySelectorAll("[data-extend-id]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = (e.currentTarget as HTMLElement).dataset.extendId!;
+      const sub = subs.find((s) => s.id === id);
+      if (!sub) return;
+      const base = daysUntil(sub.nextPaymentDue) > 0 ? new Date(sub.nextPaymentDue) : new Date();
+      base.setDate(base.getDate() + 30);
+      try {
+        await window.api.updateSubscriber(id, { nextPaymentDue: base.toISOString() });
+        openSubscribers();
+      } catch (err: any) {
+        alert(`Predĺženie zlyhalo: ${err?.message ?? String(err)}`);
+      }
+    });
+  });
+
+  subscribersListEl.querySelectorAll("[data-remove-id]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = (e.currentTarget as HTMLElement).dataset.removeId!;
+      if (!window.confirm("Naozaj zmazať tohto predplatiteľa?")) return;
+      try {
+        await window.api.deleteSubscriber(id);
+        openSubscribers();
+      } catch (err: any) {
+        alert(`Zmazanie zlyhalo: ${err?.message ?? String(err)}`);
+      }
+    });
+  });
+}
+
+openSubscribersBtn.addEventListener("click", openSubscribers);
+closeSubscribersBtn.addEventListener("click", () => {
+  subscribersModal.hidden = true;
+});
+
+addSubscriberBtn.addEventListener("click", async () => {
+  const name = subNameInput.value.trim();
+  if (!name) {
+    alert("Zadaj meno alebo názov skupiny.");
+    return;
+  }
+  const tier = subTierSelect.value;
+  const priceEur = tier === "group" ? 99 : 29;
+  const nextPaymentDue = new Date();
+  nextPaymentDue.setDate(nextPaymentDue.getDate() + 30);
+
+  const subscriber = {
+    id: `sub-${Date.now()}`,
+    name,
+    contact: subContactInput.value.trim(),
+    tier,
+    priceEur,
+    nextPaymentDue: nextPaymentDue.toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+
+  addSubscriberBtn.disabled = true;
+  try {
+    await window.api.addSubscriber(subscriber);
+    subNameInput.value = "";
+    subContactInput.value = "";
+    openSubscribers();
+  } catch (err: any) {
+    alert(`Pridanie zlyhalo: ${err?.message ?? String(err)}`);
+  } finally {
+    addSubscriberBtn.disabled = false;
+  }
 });
 
 checkResultsBtn.addEventListener("click", async () => {
