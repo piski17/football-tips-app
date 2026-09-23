@@ -56,6 +56,7 @@
         <button class="btn-ghost" id="openTicketBtn">Tiket <span id="ticketCount"></span></button>
         <button class="btn-ghost" id="openTipsBtn">História tipov</button>
         <button class="btn-ghost" id="openSubscribersBtn">Predplatitelia</button>
+        <button class="btn-ghost" id="openDailyOverviewBtn">📋 Prehľad dňa</button>
         <button class="btn-ghost" id="openWebSyncBtn">Synchronizácia</button>
         <button class="btn-ghost" id="openSettingsBtn">API kľúč</button>
       </div>
@@ -152,6 +153,17 @@
       <div class="tips-list" id="subscribersList"></div>
       <div class="modal-actions">
         <button class="btn-ghost" id="closeSubscribersBtn">Zavrieť</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="dailyOverviewModal" hidden>
+    <div class="modal modal-large">
+      <h3>Prehľad dňa</h3>
+      <p class="muted small" style="margin-top: -8px;">Odporúčaný tip pre každý zápas zo zoznamu vľavo, na jednom mieste.</p>
+      <div id="dailyOverviewList"></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="closeDailyOverviewBtn">Zavrieť</button>
       </div>
     </div>
   </div>
