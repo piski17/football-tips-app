@@ -217,11 +217,6 @@ const subNameInput = document.getElementById("subName") as HTMLInputElement;
 const subContactInput = document.getElementById("subContact") as HTMLInputElement;
 const subTierSelect = document.getElementById("subTier") as HTMLSelectElement;
 
-const openDailyOverviewBtn = document.getElementById("openDailyOverviewBtn") as HTMLButtonElement;
-const dailyOverviewModal = document.getElementById("dailyOverviewModal") as HTMLElement;
-const dailyOverviewListEl = document.getElementById("dailyOverviewList") as HTMLElement;
-const closeDailyOverviewBtn = document.getElementById("closeDailyOverviewBtn") as HTMLButtonElement;
-
 /**
  * Odhadne sezónu (rok jej začiatku) podľa zvoleného dátumu. Väčšina top
  * európskych líg beží od júla/augusta do mája/júna, preto mesiace júl-december
@@ -1408,76 +1403,5 @@ saveWebSyncBtn.addEventListener("click", async () => {
   webSyncModal.hidden = true;
 });
 
-// ---- Prehľad dňa - odporúčaný tip pre všetky aktuálne zobrazené zápasy naraz ----
-
-async function openDailyOverview() {
-  dailyOverviewModal.hidden = false;
-
-  if (currentFixtures.length === 0) {
-    dailyOverviewListEl.innerHTML = `<p class="empty-state">Najprv načítaj zápasy vľavo (vyber dátum/ligy).</p>`;
-    return;
-  }
-
-  dailyOverviewListEl.innerHTML = `<p class="muted small">Analyzujem 0/${currentFixtures.length} zápasov…</p>`;
-  const rows: { fixture: any; bestBet?: any; error?: boolean }[] = [];
-
-  for (let i = 0; i < currentFixtures.length; i++) {
-    const fixture = currentFixtures[i];
-    try {
-      const result = await window.api.analyzeFixture(fixture, fixture.league.id, fixture.league.season);
-      const bestBet = result.bestBets && result.bestBets[0];
-      rows.push({ fixture, bestBet });
-    } catch (err) {
-      rows.push({ fixture, error: true });
-    }
-
-    dailyOverviewListEl.innerHTML =
-      `<p class="muted small">Analyzujem ${i + 1}/${currentFixtures.length} zápasov…</p>` + renderDailyOverviewRows(rows);
-  }
-}
-
-function renderDailyOverviewRows(rows: { fixture: any; bestBet?: any; error?: boolean }[]): string {
-  return rows
-    .map(({ fixture, bestBet, error }) => {
-      const home = translateTeamName(fixture.homeTeam.name);
-      const away = translateTeamName(fixture.awayTeam.name);
-      if (error) {
-        return `
-          <div class="tip-row">
-            <div class="tip-row-info">
-              <div class="tip-row-match">${escapeHtml(home)} — ${escapeHtml(away)}</div>
-              <div class="tip-row-market muted small">Analýza zlyhala</div>
-            </div>
-          </div>
-        `;
-      }
-      if (!bestBet) {
-        return `
-          <div class="tip-row">
-            <div class="tip-row-info">
-              <div class="tip-row-match">${escapeHtml(home)} — ${escapeHtml(away)}</div>
-              <div class="tip-row-market muted small">Žiadny tip s dostatočnou hodnotou</div>
-            </div>
-          </div>
-        `;
-      }
-      return `
-        <div class="tip-row">
-          <div class="tip-row-info">
-            <div class="tip-row-match">${escapeHtml(home)} — ${escapeHtml(away)}</div>
-            <div class="tip-row-market">${escapeHtml(bestBet.market)}: ${escapeHtml(
-        translateNamesInText(bestBet.selection, fixture.homeTeam.name, fixture.awayTeam.name)
-      )} · ${bestBet.probability.toFixed(0)}%</div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-openDailyOverviewBtn.addEventListener("click", openDailyOverview);
-closeDailyOverviewBtn.addEventListener("click", () => {
-  dailyOverviewModal.hidden = true;
-});
 
 init();
