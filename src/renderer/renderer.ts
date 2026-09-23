@@ -45,6 +45,8 @@ interface FootballApi {
   addSubscriber(subscriber: any): Promise<boolean>;
   updateSubscriber(id: string, updates: any): Promise<boolean>;
   deleteSubscriber(id: string): Promise<boolean>;
+  sendNoTipToday(target: string): Promise<boolean>;
+  sendWeeklyReport(target: string): Promise<boolean>;
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
   checkTipResults(): Promise<any[]>;
@@ -123,6 +125,8 @@ const tipsListEl = document.getElementById("tipsList") as HTMLElement;
 const closeTipsBtn = document.getElementById("closeTipsBtn") as HTMLButtonElement;
 const checkResultsBtn = document.getElementById("checkResultsBtn") as HTMLButtonElement;
 const clearAllTipsBtn = document.getElementById("clearAllTipsBtn") as HTMLButtonElement;
+const noTipTodayBtn = document.getElementById("noTipTodayBtn") as HTMLButtonElement;
+const weeklyReportBtn = document.getElementById("weeklyReportBtn") as HTMLButtonElement;
 
 const openSubscribersBtn = document.getElementById("openSubscribersBtn") as HTMLButtonElement;
 const subscribersModal = document.getElementById("subscribersModal") as HTMLElement;
@@ -1262,6 +1266,34 @@ clearAllTipsBtn.addEventListener("click", async () => {
     alert(`Vymazanie zlyhalo: ${err?.message ?? String(err)}. Skús to prosím znova.`);
   } finally {
     clearAllTipsBtn.disabled = false;
+  }
+});
+
+noTipTodayBtn.addEventListener("click", async () => {
+  const target = await askTelegramTarget();
+  if (!target) return;
+  noTipTodayBtn.disabled = true;
+  try {
+    await window.api.sendNoTipToday(target);
+    alert("Odoslané.");
+  } catch (err: any) {
+    alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+  } finally {
+    noTipTodayBtn.disabled = false;
+  }
+});
+
+weeklyReportBtn.addEventListener("click", async () => {
+  const target = await askTelegramTarget();
+  if (!target) return;
+  weeklyReportBtn.disabled = true;
+  try {
+    await window.api.sendWeeklyReport(target);
+    alert("Odoslané.");
+  } catch (err: any) {
+    alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+  } finally {
+    weeklyReportBtn.disabled = false;
   }
 });
 

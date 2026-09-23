@@ -142,3 +142,13 @@ export async function deleteSubscriberRemote(id: string): Promise<void> {
   requireWebSync();
   await webClient().delete(`/api/subscribers/${id}`);
 }
+
+export async function sendNoTipTodayRemote(target: "premium" | "vip" | "both"): Promise<void> {
+  requireWebSync();
+  await webClient().post("/api/telegram/no-tip-today", { target });
+}
+
+export async function sendWeeklyReportRemote(target: "premium" | "vip" | "both"): Promise<void> {
+  requireWebSync();
+  await webClient().post("/api/telegram/weekly-report", { target });
+}

@@ -31,6 +31,8 @@ import {
   addSubscriberRemote,
   updateSubscriberRemote,
   deleteSubscriberRemote,
+  sendNoTipTodayRemote,
+  sendWeeklyReportRemote,
 } from "./tipsStore";
 import { evaluateTip, computeTicketStatus } from "./tipEvaluator";
 
@@ -246,6 +248,16 @@ ipcMain.handle("subscribers:update", async (_e, id: string, updates: any) => {
 
 ipcMain.handle("subscribers:delete", async (_e, id: string) => {
   await deleteSubscriberRemote(id);
+  return true;
+});
+
+ipcMain.handle("telegram:noTipToday", async (_e, target: "premium" | "vip" | "both") => {
+  await sendNoTipTodayRemote(target);
+  return true;
+});
+
+ipcMain.handle("telegram:weeklyReport", async (_e, target: "premium" | "vip" | "both") => {
+  await sendWeeklyReportRemote(target);
   return true;
 });
 
