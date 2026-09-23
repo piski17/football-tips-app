@@ -1047,7 +1047,8 @@ function renderTipsList(tips: any[]) {
           <span class="tip-status ${t.status}">${statusLabel}</span>
           ${
             t.status === "pending"
-              ? `<button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
+              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">📤</button>
+                 <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
               : ""
           }
         </div>
@@ -1063,7 +1064,8 @@ function renderTipsList(tips: any[]) {
           <span class="tip-status ${t.status}">${statusLabel}</span>
           ${
             t.status === "pending"
-              ? `<button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
+              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">📤</button>
+                 <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
               : ""
           }
         </div>
@@ -1083,6 +1085,14 @@ function renderTipsList(tips: any[]) {
       } finally {
         openTipsHistory();
       }
+    });
+  });
+
+  tipsListEl.querySelectorAll("[data-telegram-id]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = (e.currentTarget as HTMLElement).dataset.telegramId;
+      if (!id) return;
+      await maybeOfferTelegram(id);
     });
   });
 }
