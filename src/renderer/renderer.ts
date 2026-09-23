@@ -1,5 +1,84 @@
 export {}; // aby súbor bol modulom (kvôli izolovanému scope)
 
+// ---- Preklad názvov reprezentácií do slovenčiny (kluby zostávajú v pôvodnom tvare) ----
+const COUNTRY_NAME_SK: Record<string, string> = {
+  Albania: "Albánsko",
+  Andorra: "Andorra",
+  Armenia: "Arménsko",
+  Austria: "Rakúsko",
+  Azerbaijan: "Azerbajdžan",
+  Belarus: "Bielorusko",
+  Belgium: "Belgicko",
+  "Bosnia and Herzegovina": "Bosna a Hercegovina",
+  Bulgaria: "Bulharsko",
+  Croatia: "Chorvátsko",
+  Cyprus: "Cyprus",
+  "Czech Republic": "Česko",
+  Denmark: "Dánsko",
+  England: "Anglicko",
+  Estonia: "Estónsko",
+  "Faroe Islands": "Faerské ostrovy",
+  Finland: "Fínsko",
+  France: "Francúzsko",
+  Georgia: "Gruzínsko",
+  Germany: "Nemecko",
+  Gibraltar: "Gibraltár",
+  Greece: "Grécko",
+  Hungary: "Maďarsko",
+  Iceland: "Island",
+  Israel: "Izrael",
+  Italy: "Taliansko",
+  Kazakhstan: "Kazachstan",
+  Kosovo: "Kosovo",
+  Latvia: "Lotyšsko",
+  Liechtenstein: "Lichtenštajnsko",
+  Lithuania: "Litva",
+  Luxembourg: "Luxembursko",
+  Malta: "Malta",
+  Moldova: "Moldavsko",
+  Montenegro: "Čierna Hora",
+  Netherlands: "Holandsko",
+  "North Macedonia": "Severné Macedónsko",
+  "Northern Ireland": "Severné Írsko",
+  Norway: "Nórsko",
+  Poland: "Poľsko",
+  Portugal: "Portugalsko",
+  "Republic of Ireland": "Írsko",
+  Romania: "Rumunsko",
+  Russia: "Rusko",
+  "San Marino": "San Maríno",
+  Scotland: "Škótsko",
+  Serbia: "Srbsko",
+  Slovakia: "Slovensko",
+  Slovenia: "Slovinsko",
+  Spain: "Španielsko",
+  Sweden: "Švédsko",
+  Switzerland: "Švajčiarsko",
+  Turkey: "Turecko",
+  Ukraine: "Ukrajina",
+  Wales: "Wales",
+};
+
+function translateTeamName(name: string): string {
+  return COUNTRY_NAME_SK[name] ?? name;
+}
+
+/**
+ * Preloží mená tímov, ktoré sú vložené priamo vo vete (napr. "Výsledok zápasu:
+ * Liechtenstein alebo remíza", vysvetlenie s formou a pod.) - len na zobrazenie,
+ * uložené dáta (SavedTip.homeTeam/awayTeam) zostávajú v pôvodnom tvare, aby
+ * fungovalo vyhodnocovanie výsledkov (tipEvaluator porovnáva presne s nimi).
+ */
+function translateNamesInText(text: string | undefined, homeOriginal: string, awayOriginal: string): string {
+  if (!text) return "";
+  let result = text;
+  const homeSk = translateTeamName(homeOriginal);
+  const awaySk = translateTeamName(awayOriginal);
+  if (homeSk !== homeOriginal) result = result.split(homeOriginal).join(homeSk);
+  if (awaySk !== awayOriginal) result = result.split(awayOriginal).join(awaySk);
+  return result;
+}
+
 // ---- Animácia percenta na úvodnej obrazovke ----
 (function runSplashProgress() {
   const fillEl = document.getElementById("splashProgressFill");
@@ -304,12 +383,12 @@ function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: a
         <div class="teams">
           <div class="team-line">
             ${fixture.homeTeam.logo ? `<img class="team-logo" src="${escapeHtml(fixture.homeTeam.logo)}" alt="" />` : ""}
-            <span class="team-name">${escapeHtml(fixture.homeTeam.name)}</span>
+            <span class="team-name">${escapeHtml(translateTeamName(fixture.homeTeam.name))}</span>
           </div>
           <span class="vs">vs</span>
           <div class="team-line">
             ${fixture.awayTeam.logo ? `<img class="team-logo" src="${escapeHtml(fixture.awayTeam.logo)}" alt="" />` : ""}
-            <span class="team-name">${escapeHtml(fixture.awayTeam.name)}</span>
+            <span class="team-name">${escapeHtml(translateTeamName(fixture.awayTeam.name))}</span>
           </div>
         </div>
       `;
@@ -348,8 +427,8 @@ function renderAnalysis(r: any) {
 
   const gamesPlayedHtml = r.seasonGamesPlayed
     ? `<p class="muted small" style="margin: -6px 0 12px;">Odohratých zápasov v tejto sezóne: ${escapeHtml(
-        r.fixture.homeTeam.name
-      )} ${r.seasonGamesPlayed.home}, ${escapeHtml(r.fixture.awayTeam.name)} ${r.seasonGamesPlayed.away}</p>`
+        translateTeamName(r.fixture.homeTeam.name)
+      )} ${r.seasonGamesPlayed.home}, ${escapeHtml(translateTeamName(r.fixture.awayTeam.name))} ${r.seasonGamesPlayed.away}</p>`
     : "";
 
   const warningHtml = r.sampleSizeWarning
@@ -364,13 +443,17 @@ function renderAnalysis(r: any) {
     <div class="tip-callout" style="${idx > 0 ? "margin-top:10px;" : ""}">
       <div class="tip-outcome">${idx === 0 ? "🎯" : idx + 1 + "."}</div>
       <div class="tip-details">
-        <div class="tip-label">${escapeHtml(bet.market)}: ${escapeHtml(bet.selection)}</div>
+        <div class="tip-label">${escapeHtml(bet.market)}: ${escapeHtml(
+        translateNamesInText(bet.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name)
+      )}</div>
         <div class="tip-meta">
           ${idx === 0 ? "Najvyššia dôvera zo všetkých trhov · " : ""}${bet.probability.toFixed(0)}%
         </div>
         ${
           bet.explanation
-            ? `<div class="tip-explanation">💡 ${escapeHtml(bet.explanation)}</div>`
+            ? `<div class="tip-explanation">💡 ${escapeHtml(
+                translateNamesInText(bet.explanation, r.fixture.homeTeam.name, r.fixture.awayTeam.name)
+              )}</div>`
             : ""
         }
       </div>
@@ -388,10 +471,10 @@ function renderAnalysis(r: any) {
       <div class="league-name">${escapeHtml(r.fixture.league.name)} · sezóna ${r.fixture.league.season}</div>
       <h2 class="match-header-teams">
         ${r.fixture.homeTeam.logo ? `<img class="team-logo-lg" src="${escapeHtml(r.fixture.homeTeam.logo)}" alt="" />` : ""}
-        <span>${escapeHtml(r.fixture.homeTeam.name)}</span>
+        <span>${escapeHtml(translateTeamName(r.fixture.homeTeam.name))}</span>
         <span class="vs-lg">—</span>
         ${r.fixture.awayTeam.logo ? `<img class="team-logo-lg" src="${escapeHtml(r.fixture.awayTeam.logo)}" alt="" />` : ""}
-        <span>${escapeHtml(r.fixture.awayTeam.name)}</span>
+        <span>${escapeHtml(translateTeamName(r.fixture.awayTeam.name))}</span>
       </h2>
     </div>
 
@@ -415,9 +498,9 @@ function renderAnalysis(r: any) {
 
     <div class="prob-section">
       <div class="section-title">Vzájomné zápasy (posledných ${r.headToHead.matchesConsidered})</div>
-      <div class="stat-line"><span>Výhry ${escapeHtml(r.fixture.homeTeam.name)}</span><strong>${r.headToHead.homeWins}</strong></div>
+      <div class="stat-line"><span>Výhry ${escapeHtml(translateTeamName(r.fixture.homeTeam.name))}</span><strong>${r.headToHead.homeWins}</strong></div>
       <div class="stat-line"><span>Remízy</span><strong>${r.headToHead.draws}</strong></div>
-      <div class="stat-line"><span>Výhry ${escapeHtml(r.fixture.awayTeam.name)}</span><strong>${r.headToHead.awayWins}</strong></div>
+      <div class="stat-line"><span>Výhry ${escapeHtml(translateTeamName(r.fixture.awayTeam.name))}</span><strong>${r.headToHead.awayWins}</strong></div>
     </div>
 
     <div class="prob-section">
@@ -745,8 +828,8 @@ function renderTicket() {
       (t) => `
     <div class="tip-row">
       <div class="tip-row-info">
-        <div class="tip-row-match">${escapeHtml(t.homeTeam)} — ${escapeHtml(t.awayTeam)}</div>
-        <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(t.selection)} · ${t.probability.toFixed(0)}%</div>
+        <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))}</div>
+        <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}%</div>
       </div>
       <button class="tip-delete-btn" data-ticket-id="${t.id}" title="Odstrániť z tiketu">✕</button>
     </div>
@@ -1031,8 +1114,8 @@ function renderTipsList(tips: any[]) {
           .map(
             (leg: any) => `
             <div class="tip-row-market" style="padding-left: 10px; border-left: 2px solid var(--border); margin-top: 4px;">
-              ${escapeHtml(leg.homeTeam)} — ${escapeHtml(leg.awayTeam)}: ${escapeHtml(leg.market)}: ${escapeHtml(
-              leg.selection
+              ${escapeHtml(translateTeamName(leg.homeTeam))} — ${escapeHtml(translateTeamName(leg.awayTeam))}: ${escapeHtml(leg.market)}: ${escapeHtml(
+              translateNamesInText(leg.selection, leg.homeTeam, leg.awayTeam)
             )} · ${leg.probability.toFixed(0)}%
               <span class="tip-status ${leg.status}" style="margin-left:6px; font-size:9.5px; padding:2px 7px;">${statusLabelOf(
               leg.status
@@ -1062,8 +1145,8 @@ function renderTipsList(tips: any[]) {
       return `
         <div class="tip-row">
           <div class="tip-row-info">
-            <div class="tip-row-match">${escapeHtml(t.homeTeam)} — ${escapeHtml(t.awayTeam)} <span class="muted small">(${date})</span></div>
-            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(t.selection)} · ${t.probability.toFixed(0)}%</div>
+            <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))} <span class="muted small">(${date})</span></div>
+            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}%</div>
           </div>
           <span class="tip-status ${t.status}">${statusLabel}</span>
           ${
