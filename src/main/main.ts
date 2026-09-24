@@ -33,6 +33,7 @@ import {
   deleteSubscriberRemote,
   sendNoTipTodayRemote,
   sendWeeklyReportRemote,
+  sendMatchOfWeekRemote,
 } from "./tipsStore";
 import { evaluateTip, computeTicketStatus } from "./tipEvaluator";
 
@@ -259,6 +260,11 @@ ipcMain.handle("telegram:noTipToday", async (_e, target: "premium" | "vip" | "bo
 
 ipcMain.handle("telegram:weeklyReport", async (_e, target: "premium" | "vip" | "both") => {
   await sendWeeklyReportRemote(target);
+  return true;
+});
+
+ipcMain.handle("telegram:matchOfWeek", async (_e, payload: any) => {
+  await sendMatchOfWeekRemote(payload);
   return true;
 });
 

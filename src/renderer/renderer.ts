@@ -126,6 +126,7 @@ interface FootballApi {
   deleteSubscriber(id: string): Promise<boolean>;
   sendNoTipToday(target: string): Promise<boolean>;
   sendWeeklyReport(target: string): Promise<boolean>;
+  sendMatchOfWeek(payload: any): Promise<boolean>;
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
   checkTipResults(): Promise<any[]>;
@@ -215,6 +216,7 @@ const closeSubscribersBtn = document.getElementById("closeSubscribersBtn") as HT
 const addSubscriberBtn = document.getElementById("addSubscriberBtn") as HTMLButtonElement;
 const subNameInput = document.getElementById("subName") as HTMLInputElement;
 const subContactInput = document.getElementById("subContact") as HTMLInputElement;
+const subTelegramChatIdInput = document.getElementById("subTelegramChatId") as HTMLInputElement;
 const subTierSelect = document.getElementById("subTier") as HTMLSelectElement;
 
 /**
@@ -483,17 +485,18 @@ function renderAnalysis(r: any) {
 
     ${topBetsHtml}
     <div id="saveTipMsg"></div>
+    <button class="btn-ghost" id="matchOfWeekBtn" style="width:100%; margin: 4px 0 8px;">🌟 Poslať ako Zápas týždňa</button>
 
     <div class="prob-section">
       <div class="section-title">Pravdepodobnosť výsledku</div>
-      ${probRow(r.fixture.homeTeam.name, r.probabilities.homeWin)}
+      ${probRow(translateTeamName(r.fixture.homeTeam.name), r.probabilities.homeWin)}
       ${probRow("Remíza", r.probabilities.draw)}
-      ${probRow(r.fixture.awayTeam.name, r.probabilities.awayWin)}
+      ${probRow(translateTeamName(r.fixture.awayTeam.name), r.probabilities.awayWin)}
     </div>
 
     <div class="stats-grid">
-      ${teamStatCard(r.fixture.homeTeam.name, r.form.home, r.form.homeScore, r.expectedGoals.home, r.historicalDataInfo?.home)}
-      ${teamStatCard(r.fixture.awayTeam.name, r.form.away, r.form.awayScore, r.expectedGoals.away, r.historicalDataInfo?.away)}
+      ${teamStatCard(translateTeamName(r.fixture.homeTeam.name), r.form.home, r.form.homeScore, r.expectedGoals.home, r.historicalDataInfo?.home)}
+      ${teamStatCard(translateTeamName(r.fixture.awayTeam.name), r.form.away, r.form.awayScore, r.expectedGoals.away, r.historicalDataInfo?.away)}
     </div>
 
     <div class="prob-section">
@@ -524,6 +527,7 @@ function renderAnalysis(r: any) {
 
   initSaveTipButton(r);
   wireTicketButtons(r);
+  wireMatchOfWeekButton(r);
   wireScorerSaveButtons(r);
 }
 
@@ -711,6 +715,34 @@ async function maybeOfferTelegram(tipId: string) {
   } catch (err: any) {
     alert(`Odoslanie do Telegramu zlyhalo: ${err?.message ?? String(err)}`);
   }
+}
+
+function wireMatchOfWeekButton(r: any) {
+  const btn = document.getElementById("matchOfWeekBtn") as HTMLButtonElement | null;
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    const target = await askTelegramTarget();
+    if (!target) return;
+    btn.disabled = true;
+    try {
+      await window.api.sendMatchOfWeek({
+        homeTeam: translateTeamName(r.fixture.homeTeam.name),
+        awayTeam: translateTeamName(r.fixture.awayTeam.name),
+        bestBets: (r.bestBets || []).slice(0, 3).map((bet: any) => ({
+          market: bet.market,
+          selection: translateNamesInText(bet.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name),
+          probability: bet.probability,
+          explanation: translateNamesInText(bet.explanation, r.fixture.homeTeam.name, r.fixture.awayTeam.name),
+        })),
+        target,
+      });
+      alert("Odoslané ako Zápas týždňa.");
+    } catch (err: any) {
+      alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 function initSaveTipButton(r: any) {
@@ -1302,6 +1334,7 @@ addSubscriberBtn.addEventListener("click", async () => {
     id: `sub-${Date.now()}`,
     name,
     contact: subContactInput.value.trim(),
+    telegramChatId: subTelegramChatIdInput.value.trim() || undefined,
     tier,
     priceEur,
     nextPaymentDue: nextPaymentDue.toISOString(),
@@ -1313,6 +1346,7 @@ addSubscriberBtn.addEventListener("click", async () => {
     await window.api.addSubscriber(subscriber);
     subNameInput.value = "";
     subContactInput.value = "";
+    subTelegramChatIdInput.value = "";
     openSubscribers();
   } catch (err: any) {
     alert(`Pridanie zlyhalo: ${err?.message ?? String(err)}`);

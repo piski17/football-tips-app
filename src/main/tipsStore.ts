@@ -152,3 +152,13 @@ export async function sendWeeklyReportRemote(target: "premium" | "vip" | "both")
   requireWebSync();
   await webClient().post("/api/telegram/weekly-report", { target });
 }
+
+export async function sendMatchOfWeekRemote(payload: {
+  homeTeam: string;
+  awayTeam: string;
+  bestBets: any[];
+  target: "premium" | "vip" | "both";
+}): Promise<void> {
+  requireWebSync();
+  await webClient().post("/api/telegram/match-of-week", payload);
+}

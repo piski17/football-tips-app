@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld("api", {
   deleteSubscriber: (id: string) => ipcRenderer.invoke("subscribers:delete", id),
   sendNoTipToday: (target: string) => ipcRenderer.invoke("telegram:noTipToday", target),
   sendWeeklyReport: (target: string) => ipcRenderer.invoke("telegram:weeklyReport", target),
+  sendMatchOfWeek: (payload: any) => ipcRenderer.invoke("telegram:matchOfWeek", payload),
   listTips: () => ipcRenderer.invoke("tips:list"),
   deleteTip: (id: string) => ipcRenderer.invoke("tips:delete", id),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),
