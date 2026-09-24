@@ -25,14 +25,14 @@ contextBridge.exposeInMainWorld("api", {
   }) => ipcRenderer.invoke("player:analyzeGoal", payload),
 
   saveTip: (tip: any) => ipcRenderer.invoke("tips:save", tip),
-  sendTipToTelegram: (id: string, target: string) => ipcRenderer.invoke("tips:sendToTelegram", id, target),
+  sendTipToTelegram: (id: string, target: string, asMatchOfWeek?: boolean) =>
+    ipcRenderer.invoke("tips:sendToTelegram", id, target, asMatchOfWeek),
   listSubscribers: () => ipcRenderer.invoke("subscribers:list"),
   addSubscriber: (subscriber: any) => ipcRenderer.invoke("subscribers:add", subscriber),
   updateSubscriber: (id: string, updates: any) => ipcRenderer.invoke("subscribers:update", id, updates),
   deleteSubscriber: (id: string) => ipcRenderer.invoke("subscribers:delete", id),
   sendNoTipToday: (target: string) => ipcRenderer.invoke("telegram:noTipToday", target),
   sendWeeklyReport: (target: string) => ipcRenderer.invoke("telegram:weeklyReport", target),
-  sendMatchOfWeek: (payload: any) => ipcRenderer.invoke("telegram:matchOfWeek", payload),
   listTips: () => ipcRenderer.invoke("tips:list"),
   deleteTip: (id: string) => ipcRenderer.invoke("tips:delete", id),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),

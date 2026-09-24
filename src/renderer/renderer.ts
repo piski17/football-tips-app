@@ -119,14 +119,13 @@ interface FootballApi {
     teamSeasonGoalsPerGame: number;
   }): Promise<any>;
   saveTip(tip: any): Promise<boolean>;
-  sendTipToTelegram(id: string, target: string): Promise<boolean>;
+  sendTipToTelegram(id: string, target: string, asMatchOfWeek?: boolean): Promise<boolean>;
   listSubscribers(): Promise<any[]>;
   addSubscriber(subscriber: any): Promise<boolean>;
   updateSubscriber(id: string, updates: any): Promise<boolean>;
   deleteSubscriber(id: string): Promise<boolean>;
   sendNoTipToday(target: string): Promise<boolean>;
   sendWeeklyReport(target: string): Promise<boolean>;
-  sendMatchOfWeek(payload: any): Promise<boolean>;
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
   checkTipResults(): Promise<any[]>;
@@ -485,7 +484,6 @@ function renderAnalysis(r: any) {
 
     ${topBetsHtml}
     <div id="saveTipMsg"></div>
-    <button class="btn-ghost" id="matchOfWeekBtn" style="width:100%; margin: 4px 0 8px;">🌟 Poslať ako Zápas týždňa</button>
 
     <div class="prob-section">
       <div class="section-title">Pravdepodobnosť výsledku</div>
@@ -527,7 +525,6 @@ function renderAnalysis(r: any) {
 
   initSaveTipButton(r);
   wireTicketButtons(r);
-  wireMatchOfWeekButton(r);
   wireScorerSaveButtons(r);
 }
 
@@ -715,34 +712,6 @@ async function maybeOfferTelegram(tipId: string) {
   } catch (err: any) {
     alert(`Odoslanie do Telegramu zlyhalo: ${err?.message ?? String(err)}`);
   }
-}
-
-function wireMatchOfWeekButton(r: any) {
-  const btn = document.getElementById("matchOfWeekBtn") as HTMLButtonElement | null;
-  if (!btn) return;
-  btn.addEventListener("click", async () => {
-    const target = await askTelegramTarget();
-    if (!target) return;
-    btn.disabled = true;
-    try {
-      await window.api.sendMatchOfWeek({
-        homeTeam: translateTeamName(r.fixture.homeTeam.name),
-        awayTeam: translateTeamName(r.fixture.awayTeam.name),
-        bestBets: (r.bestBets || []).slice(0, 3).map((bet: any) => ({
-          market: bet.market,
-          selection: translateNamesInText(bet.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name),
-          probability: bet.probability,
-          explanation: translateNamesInText(bet.explanation, r.fixture.homeTeam.name, r.fixture.awayTeam.name),
-        })),
-        target,
-      });
-      alert("Odoslané ako Zápas týždňa.");
-    } catch (err: any) {
-      alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
-    } finally {
-      btn.disabled = false;
-    }
-  });
 }
 
 function initSaveTipButton(r: any) {
@@ -1167,6 +1136,7 @@ function renderTipsList(tips: any[]) {
           ${
             t.status === "pending"
               ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">📤</button>
+                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">🌟</button>
                  <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
               : ""
           }
@@ -1184,6 +1154,7 @@ function renderTipsList(tips: any[]) {
           ${
             t.status === "pending"
               ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">📤</button>
+                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">🌟</button>
                  <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
               : ""
           }
@@ -1212,6 +1183,21 @@ function renderTipsList(tips: any[]) {
       const id = (e.currentTarget as HTMLElement).dataset.telegramId;
       if (!id) return;
       await maybeOfferTelegram(id);
+    });
+  });
+
+  tipsListEl.querySelectorAll("[data-motw-id]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = (e.currentTarget as HTMLElement).dataset.motwId;
+      if (!id) return;
+      const target = await askTelegramTarget();
+      if (!target) return;
+      try {
+        await window.api.sendTipToTelegram(id, target, true);
+        alert("Odoslané ako Zápas/Tiket týždňa.");
+      } catch (err: any) {
+        alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+      }
     });
   });
 }

@@ -104,11 +104,15 @@ export async function checkResultsRemote(): Promise<SavedTip[] | null> {
  * Pošle už uložený tip do Telegramu - funguje len pri zapnutej synchronizácii
  * s webom (Telegram integrácia beží na strane webového servera).
  */
-export async function sendTipToTelegram(id: string, target: "premium" | "vip" | "both"): Promise<void> {
+export async function sendTipToTelegram(
+  id: string,
+  target: "premium" | "vip" | "both",
+  asMatchOfWeek?: boolean
+): Promise<void> {
   if (!hasWebSync()) {
     throw new Error("Odosielanie do Telegramu funguje len pri zapnutej synchronizácii s webovou appkou.");
   }
-  await webClient().post(`/api/tips/${id}/telegram`, { target });
+  await webClient().post(`/api/tips/${id}/telegram`, { target, asMatchOfWeek });
 }
 
 /**
@@ -151,14 +155,4 @@ export async function sendNoTipTodayRemote(target: "premium" | "vip" | "both"): 
 export async function sendWeeklyReportRemote(target: "premium" | "vip" | "both"): Promise<void> {
   requireWebSync();
   await webClient().post("/api/telegram/weekly-report", { target });
-}
-
-export async function sendMatchOfWeekRemote(payload: {
-  homeTeam: string;
-  awayTeam: string;
-  bestBets: any[];
-  target: "premium" | "vip" | "both";
-}): Promise<void> {
-  requireWebSync();
-  await webClient().post("/api/telegram/match-of-week", payload);
 }
