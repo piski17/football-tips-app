@@ -817,10 +817,10 @@ button, input {
 
 .tips-list {
   overflow-y: auto;
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 50vh;
 }
 
 .tip-row {

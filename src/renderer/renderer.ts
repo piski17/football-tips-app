@@ -1135,8 +1135,8 @@ function renderTipsList(tips: any[]) {
           <span class="tip-status ${t.status}">${statusLabel}</span>
           ${
             t.status === "pending"
-              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">📤</button>
-                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">🌟</button>
+              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
+                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>
                  <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
               : ""
           }
@@ -1153,8 +1153,8 @@ function renderTipsList(tips: any[]) {
           <span class="tip-status ${t.status}">${statusLabel}</span>
           ${
             t.status === "pending"
-              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">📤</button>
-                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">🌟</button>
+              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
+                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>
                  <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
               : ""
           }
