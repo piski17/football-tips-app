@@ -1106,9 +1106,13 @@ function renderTipsList(tips: any[]) {
   tipsListEl.innerHTML = tips
     .map((t) => {
       const date = new Date(t.matchDate).toLocaleDateString("sk-SK");
-      const statusLabelOf = (s: string) =>
-        s === "won" ? "Vyhral" : s === "lost" ? "Prehral" : s === "void" ? "Neurčené" : "Čaká";
-      const statusLabel = statusLabelOf(t.status);
+      const rowClass = t.status === "won" ? "tip-row-won" : t.status === "lost" ? "tip-row-lost" : "";
+      const resultIconHtml =
+        t.status === "won"
+          ? `<span class="tip-result-icon won">✓</span>`
+          : t.status === "lost"
+          ? `<span class="tip-result-icon lost">✕</span>`
+          : `<span class="tip-status ${t.status}">${t.status === "void" ? "Neurčené" : "Čaká"}</span>`;
 
       if (t.legs && t.legs.length > 0) {
         const legsHtml = t.legs
@@ -1118,46 +1122,43 @@ function renderTipsList(tips: any[]) {
               ${escapeHtml(translateTeamName(leg.homeTeam))} — ${escapeHtml(translateTeamName(leg.awayTeam))}: ${escapeHtml(leg.market)}: ${escapeHtml(
               translateNamesInText(leg.selection, leg.homeTeam, leg.awayTeam)
             )} · ${leg.probability.toFixed(0)}%
-              <span class="tip-status ${leg.status}" style="margin-left:6px; font-size:9.5px; padding:2px 7px;">${statusLabelOf(
-              leg.status
-            )}</span>
             </div>`
           )
           .join("");
 
         return `
-        <div class="tip-row" style="align-items: flex-start;">
+        <div class="tip-row ${rowClass}" style="align-items: flex-start;">
           <div class="tip-row-info">
             <div class="tip-row-match">🎫 Tiket (${t.legs.length} tipov) <span class="muted small">(${date})</span></div>
             <div class="tip-row-market">Kombinovaná pravdepodobnosť: ${t.probability.toFixed(1)}%</div>
             ${legsHtml}
           </div>
-          <span class="tip-status ${t.status}">${statusLabel}</span>
+          ${resultIconHtml}
           ${
             t.status === "pending"
               ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
-                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>
-                 <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
+                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
               : ""
           }
+          <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>
         </div>
       `;
       }
 
       return `
-        <div class="tip-row">
+        <div class="tip-row ${rowClass}">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))} <span class="muted small">(${date})</span></div>
             <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}%</div>
           </div>
-          <span class="tip-status ${t.status}">${statusLabel}</span>
+          ${resultIconHtml}
           ${
             t.status === "pending"
               ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
-                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>
-                 <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>`
+                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
               : ""
           }
+          <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>
         </div>
       `;
     })
@@ -1167,6 +1168,8 @@ function renderTipsList(tips: any[]) {
     btn.addEventListener("click", async (e) => {
       const id = (e.currentTarget as HTMLElement).dataset.tipId;
       if (!id) return;
+      const confirmed = window.confirm("Naozaj chceš odstrániť tento tip/tiket z histórie? Táto akcia sa nedá vrátiť späť.");
+      if (!confirmed) return;
       (btn as HTMLButtonElement).disabled = true;
       try {
         await window.api.deleteTip(id);

@@ -75,7 +75,7 @@ export async function deleteTip(id: string): Promise<void> {
   }
   const tips = readAllLocal();
   const target = tips.find((t) => t.id === id);
-  if (!target || target.status !== "pending") return;
+  if (!target) return;
   writeAllLocal(tips.filter((t) => t.id !== id));
 }
 
