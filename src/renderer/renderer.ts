@@ -69,6 +69,10 @@ function translateTeamName(name: string): string {
  * uložené dáta (SavedTip.homeTeam/awayTeam) zostávajú v pôvodnom tvare, aby
  * fungovalo vyhodnocovanie výsledkov (tipEvaluator porovnáva presne s nimi).
  */
+function impliedOdds(probability: number): string {
+  return probability > 0 ? (100 / probability).toFixed(2) : "-";
+}
+
 function translateNamesInText(text: string | undefined, homeOriginal: string, awayOriginal: string): string {
   if (!text) return "";
   let result = text;
@@ -126,6 +130,7 @@ interface FootballApi {
   deleteSubscriber(id: string): Promise<boolean>;
   sendNoTipToday(target: string): Promise<boolean>;
   sendWeeklyReport(target: string): Promise<boolean>;
+  sendTipResult(id: string, target: string): Promise<boolean>;
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
   checkTipResults(): Promise<any[]>;
@@ -1130,7 +1135,7 @@ function renderTipsList(tips: any[]) {
         <div class="tip-row ${rowClass}" style="align-items: flex-start;">
           <div class="tip-row-info">
             <div class="tip-row-match">🎫 Tiket (${t.legs.length} tipov) <span class="muted small">(${date})</span></div>
-            <div class="tip-row-market">Kombinovaná pravdepodobnosť: ${t.probability.toFixed(1)}%</div>
+            <div class="tip-row-market">Kombinovaná pravdepodobnosť: ${t.probability.toFixed(1)}% · kurz ~${impliedOdds(t.probability)}</div>
             ${legsHtml}
           </div>
           ${resultIconHtml}
@@ -1138,7 +1143,7 @@ function renderTipsList(tips: any[]) {
             t.status === "pending"
               ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
                  <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
-              : ""
+              : `<button class="tip-delete-btn" data-result-id="${t.id}" title="Poslať výsledok do Telegramu">📣</button>`
           }
           <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>
         </div>
@@ -1149,14 +1154,14 @@ function renderTipsList(tips: any[]) {
         <div class="tip-row ${rowClass}">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))} <span class="muted small">(${date})</span></div>
-            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}%</div>
+            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}% · kurz ~${impliedOdds(t.probability)}</div>
           </div>
           ${resultIconHtml}
           ${
             t.status === "pending"
               ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
                  <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
-              : ""
+              : `<button class="tip-delete-btn" data-result-id="${t.id}" title="Poslať výsledok do Telegramu">📣</button>`
           }
           <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>
         </div>
@@ -1198,6 +1203,21 @@ function renderTipsList(tips: any[]) {
       try {
         await window.api.sendTipToTelegram(id, target, true);
         alert("Odoslané ako Zápas/Tiket týždňa.");
+      } catch (err: any) {
+        alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+      }
+    });
+  });
+
+  tipsListEl.querySelectorAll("[data-result-id]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const id = (e.currentTarget as HTMLElement).dataset.resultId;
+      if (!id) return;
+      const target = await askTelegramTarget();
+      if (!target) return;
+      try {
+        await window.api.sendTipResult(id, target);
+        alert("Výsledok odoslaný.");
       } catch (err: any) {
         alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
       }

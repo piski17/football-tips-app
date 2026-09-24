@@ -156,3 +156,8 @@ export async function sendWeeklyReportRemote(target: "premium" | "vip" | "both")
   requireWebSync();
   await webClient().post("/api/telegram/weekly-report", { target });
 }
+
+export async function sendTipResultRemote(id: string, target: "premium" | "vip" | "both"): Promise<void> {
+  requireWebSync();
+  await webClient().post(`/api/tips/${id}/telegram-result`, { target });
+}
