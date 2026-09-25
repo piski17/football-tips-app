@@ -73,6 +73,25 @@ function impliedOdds(probability: number): string {
   return probability > 0 ? (100 / probability).toFixed(2) : "-";
 }
 
+function skeletonHtml(rows: number = 3): string {
+  return Array.from({ length: rows })
+    .map(() => `<div class="skeleton skeleton-block"></div>`)
+    .join("");
+}
+
+function showToast(message: string): void {
+  const isError = /zlyhal|chyba|nepodarilo/i.test(message);
+  const toast = document.createElement("div");
+  toast.className = `toast ${isError ? "toast-error" : "toast-success"}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("toast-visible"));
+  setTimeout(() => {
+    toast.classList.remove("toast-visible");
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
 function translateNamesInText(text: string | undefined, homeOriginal: string, awayOriginal: string): string {
   if (!text) return "";
   let result = text;
@@ -288,7 +307,7 @@ async function loadFixtures(silent: boolean = false) {
   }
 
   if (!silent) {
-    fixtureListEl.innerHTML = `<div class="loading-state">Načítavam zápasy…</div>`;
+    fixtureListEl.innerHTML = skeletonHtml(5);
     loadFixturesBtn.disabled = true;
   }
 
@@ -340,6 +359,7 @@ function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: a
 
   groupsWithMatches.forEach(({ fixtures }) => {
     const leagueName = fixtures[0]?.league?.name ?? "Liga";
+    const leagueLogo = fixtures[0]?.league?.logo;
     const isCollapsed = collapsedLeagues.has(leagueName);
 
     const group = document.createElement("div");
@@ -347,7 +367,9 @@ function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: a
 
     const header = document.createElement("button");
     header.className = "league-group-header";
-    header.innerHTML = `<span>${escapeHtml(leagueName)}</span><span class="chevron">${isCollapsed ? "▸" : "▾"}</span>`;
+    header.innerHTML = `<span style="display:flex; align-items:center; gap:8px;">${
+      leagueLogo ? `<img src="${escapeHtml(leagueLogo)}" class="league-logo" alt="" />` : ""
+    }${escapeHtml(leagueName)}</span><span class="chevron">${isCollapsed ? "▸" : "▾"}</span>`;
     header.addEventListener("click", () => {
       if (collapsedLeagues.has(leagueName)) collapsedLeagues.delete(leagueName);
       else collapsedLeagues.add(leagueName);
@@ -415,7 +437,7 @@ function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: a
 }
 
 async function analyzeFixture(fixture: any, leagueId: number, season: number) {
-  analysisColumnEl.innerHTML = `<div class="loading-state">Počítam štatistickú analýzu…</div>`;
+  analysisColumnEl.innerHTML = skeletonHtml(4);
 
   try {
     const result = await window.api.analyzeFixture(fixture, leagueId, season);
@@ -715,7 +737,7 @@ async function maybeOfferTelegram(tipId: string) {
   try {
     await window.api.sendTipToTelegram(tipId, target);
   } catch (err: any) {
-    alert(`Odoslanie do Telegramu zlyhalo: ${err?.message ?? String(err)}`);
+    showToast(`Odoslanie do Telegramu zlyhalo: ${err?.message ?? String(err)}`);
   }
 }
 
@@ -876,7 +898,7 @@ clearTicketBtn.addEventListener("click", () => {
 
 saveTicketBtn.addEventListener("click", async () => {
   if (ticketItems.length < 2) {
-    alert("Tiket musí obsahovať aspoň 2 tipy.");
+    showToast("Tiket musí obsahovať aspoň 2 tipy.");
     return;
   }
 
@@ -918,7 +940,7 @@ saveTicketBtn.addEventListener("click", async () => {
     renderTicket();
     await maybeOfferTelegram(ticketTip.id);
   } catch (err: any) {
-    alert(`Uloženie tiketu zlyhalo: ${err?.message ?? String(err)}`);
+    showToast(`Uloženie tiketu zlyhalo: ${err?.message ?? String(err)}`);
   } finally {
     saveTicketBtn.disabled = false;
   }
@@ -928,7 +950,7 @@ saveTicketBtn.addEventListener("click", async () => {
 
 async function openTipsHistory() {
   tipsModal.hidden = false;
-  tipsListEl.innerHTML = `<div class="loading-state">Načítavam tipy…</div>`;
+  tipsListEl.innerHTML = skeletonHtml(2);
   try {
     const tips = await window.api.listTips();
     renderTipsList(tips);
@@ -1175,7 +1197,7 @@ function renderTipsList(tips: any[]) {
       try {
         await window.api.deleteTip(id);
       } catch (err: any) {
-        alert(`Zmazanie zlyhalo: ${err?.message ?? String(err)}. Skús to prosím znova.`);
+        showToast(`Zmazanie zlyhalo: ${err?.message ?? String(err)}. Skús to prosím znova.`);
       } finally {
         openTipsHistory();
       }
@@ -1190,9 +1212,9 @@ function renderTipsList(tips: any[]) {
       if (!target) return;
       try {
         await window.api.sendTipToTelegram(id, target, true);
-        alert("Odoslané ako Zápas/Tiket týždňa.");
+        showToast("Odoslané ako Zápas/Tiket týždňa.");
       } catch (err: any) {
-        alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+        showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
       }
     });
   });
@@ -1205,9 +1227,9 @@ function renderTipsList(tips: any[]) {
       if (!target) return;
       try {
         await window.api.sendTipResult(id, target);
-        alert("Výsledok odoslaný.");
+        showToast("Výsledok odoslaný.");
       } catch (err: any) {
-        alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+        showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
       }
     });
   });
@@ -1234,7 +1256,7 @@ function subscriberStatus(sub: any): { label: string; cls: string } {
 
 async function openSubscribers() {
   subscribersModal.hidden = false;
-  subscribersListEl.innerHTML = `<p class="muted small">Načítavam…</p>`;
+  subscribersListEl.innerHTML = skeletonHtml(2);
   try {
     const subs = await window.api.listSubscribers();
     renderSubscribersList(subs);
@@ -1292,7 +1314,7 @@ function renderSubscribersList(subs: any[]) {
         await window.api.updateSubscriber(id, { nextPaymentDue: base.toISOString() });
         openSubscribers();
       } catch (err: any) {
-        alert(`Predĺženie zlyhalo: ${err?.message ?? String(err)}`);
+        showToast(`Predĺženie zlyhalo: ${err?.message ?? String(err)}`);
       }
     });
   });
@@ -1305,7 +1327,7 @@ function renderSubscribersList(subs: any[]) {
         await window.api.deleteSubscriber(id);
         openSubscribers();
       } catch (err: any) {
-        alert(`Zmazanie zlyhalo: ${err?.message ?? String(err)}`);
+        showToast(`Zmazanie zlyhalo: ${err?.message ?? String(err)}`);
       }
     });
   });
@@ -1319,7 +1341,7 @@ closeSubscribersBtn.addEventListener("click", () => {
 addSubscriberBtn.addEventListener("click", async () => {
   const name = subNameInput.value.trim();
   if (!name) {
-    alert("Zadaj meno alebo názov skupiny.");
+    showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
   const tier = subTierSelect.value;
@@ -1346,7 +1368,7 @@ addSubscriberBtn.addEventListener("click", async () => {
     subTelegramChatIdInput.value = "";
     openSubscribers();
   } catch (err: any) {
-    alert(`Pridanie zlyhalo: ${err?.message ?? String(err)}`);
+    showToast(`Pridanie zlyhalo: ${err?.message ?? String(err)}`);
   } finally {
     addSubscriberBtn.disabled = false;
   }
@@ -1359,7 +1381,7 @@ checkResultsBtn.addEventListener("click", async () => {
     const tips = await window.api.checkTipResults();
     renderTipsList(tips);
   } catch (err: any) {
-    alert(`Kontrola výsledkov zlyhala: ${err?.message ?? String(err)}`);
+    showToast(`Kontrola výsledkov zlyhala: ${err?.message ?? String(err)}`);
   } finally {
     checkResultsBtn.disabled = false;
     checkResultsBtn.textContent = "Skontrolovať výsledky";
@@ -1377,7 +1399,7 @@ clearAllTipsBtn.addEventListener("click", async () => {
     await window.api.clearAllTips();
     renderTipsList([]);
   } catch (err: any) {
-    alert(`Vymazanie zlyhalo: ${err?.message ?? String(err)}. Skús to prosím znova.`);
+    showToast(`Vymazanie zlyhalo: ${err?.message ?? String(err)}. Skús to prosím znova.`);
   } finally {
     clearAllTipsBtn.disabled = false;
   }
@@ -1389,9 +1411,9 @@ noTipTodayBtn.addEventListener("click", async () => {
   noTipTodayBtn.disabled = true;
   try {
     await window.api.sendNoTipToday(target);
-    alert("Odoslané.");
+    showToast("Odoslané.");
   } catch (err: any) {
-    alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+    showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
   } finally {
     noTipTodayBtn.disabled = false;
   }
@@ -1403,9 +1425,9 @@ weeklyReportBtn.addEventListener("click", async () => {
   weeklyReportBtn.disabled = true;
   try {
     await window.api.sendWeeklyReport(target);
-    alert("Odoslané.");
+    showToast("Odoslané.");
   } catch (err: any) {
-    alert(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+    showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
   } finally {
     weeklyReportBtn.disabled = false;
   }
