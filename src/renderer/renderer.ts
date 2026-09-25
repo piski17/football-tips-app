@@ -1132,7 +1132,7 @@ function renderTipsList(tips: any[]) {
           .join("");
 
         return `
-        <div class="tip-row ${rowClass}" style="align-items: flex-start;">
+        <div class="tip-row ${rowClass}" data-row-id="${t.id}" style="align-items: flex-start;">
           <div class="tip-row-info">
             <div class="tip-row-match">🎫 Tiket (${t.legs.length} tipov) <span class="muted small">(${date})</span></div>
             <div class="tip-row-market">Kombinovaná pravdepodobnosť: ${t.probability.toFixed(1)}% · kurz ~${impliedOdds(t.probability)}</div>
@@ -1141,17 +1141,15 @@ function renderTipsList(tips: any[]) {
           ${resultIconHtml}
           ${
             t.status === "pending"
-              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
-                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
+              ? `<button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
               : `<button class="tip-delete-btn" data-result-id="${t.id}" title="Poslať výsledok do Telegramu">➤</button>`
           }
-          <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>
         </div>
       `;
       }
 
       return `
-        <div class="tip-row ${rowClass}">
+        <div class="tip-row ${rowClass}" data-row-id="${t.id}">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))} <span class="muted small">(${date})</span></div>
             <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}% · kurz ~${impliedOdds(t.probability)}</div>
@@ -1159,23 +1157,21 @@ function renderTipsList(tips: any[]) {
           ${resultIconHtml}
           ${
             t.status === "pending"
-              ? `<button class="tip-delete-btn" data-telegram-id="${t.id}" title="Poslať do Telegramu">✉</button>
-                 <button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
+              ? `<button class="tip-delete-btn" data-motw-id="${t.id}" title="Poslať ako Zápas/Tiket týždňa">★</button>`
               : `<button class="tip-delete-btn" data-result-id="${t.id}" title="Poslať výsledok do Telegramu">➤</button>`
           }
-          <button class="tip-delete-btn" data-tip-id="${t.id}" title="Zmazať">✕</button>
         </div>
       `;
     })
     .join("");
 
-  tipsListEl.querySelectorAll(".tip-delete-btn").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const id = (e.currentTarget as HTMLElement).dataset.tipId;
+  tipsListEl.querySelectorAll("[data-row-id]").forEach((row) => {
+    row.addEventListener("click", async (e) => {
+      if ((e.target as HTMLElement).closest("button")) return;
+      const id = (row as HTMLElement).dataset.rowId;
       if (!id) return;
       const confirmed = window.confirm("Naozaj chceš odstrániť tento tip/tiket z histórie? Táto akcia sa nedá vrátiť späť.");
       if (!confirmed) return;
-      (btn as HTMLButtonElement).disabled = true;
       try {
         await window.api.deleteTip(id);
       } catch (err: any) {
@@ -1183,14 +1179,6 @@ function renderTipsList(tips: any[]) {
       } finally {
         openTipsHistory();
       }
-    });
-  });
-
-  tipsListEl.querySelectorAll("[data-telegram-id]").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      const id = (e.currentTarget as HTMLElement).dataset.telegramId;
-      if (!id) return;
-      await maybeOfferTelegram(id);
     });
   });
 
