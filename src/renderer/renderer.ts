@@ -184,8 +184,6 @@ interface TicketItem {
 }
 let collapsedLeagues: Set<string> = new Set(); // ligy schované cez tlačidlo, zostáva aj po automatickom obnovení
 
-const customLeagueInput = document.getElementById("customLeagueId") as HTMLInputElement;
-const toggleCustomLeagueBtn = document.getElementById("toggleCustomLeagueBtn") as HTMLButtonElement;
 const seasonInput = document.getElementById("seasonInput") as HTMLInputElement;
 const matchDateInput = document.getElementById("matchDateInput") as HTMLInputElement;
 const loadFixturesBtn = document.getElementById("loadFixturesBtn") as HTMLButtonElement;
@@ -254,12 +252,6 @@ function guessSeasonFromDate(dateStr: string): number {
   return month >= 7 ? d.getFullYear() : d.getFullYear() - 1;
 }
 
-toggleCustomLeagueBtn.addEventListener("click", () => {
-  customLeagueInput.hidden = !customLeagueInput.hidden;
-  if (!customLeagueInput.hidden) customLeagueInput.focus();
-});
-
-customLeagueInput.addEventListener("change", () => loadFixtures());
 
 async function init() {
   matchDateInput.value = new Date().toISOString().slice(0, 10);
@@ -290,12 +282,10 @@ async function loadFixtures(silent: boolean = false) {
   const date = matchDateInput.value || new Date().toISOString().slice(0, 10);
 
   const leagueIds = new Set(selectedLeagueIds);
-  const customId = customLeagueInput.value.trim() ? parseInt(customLeagueInput.value.trim(), 10) : null;
-  if (customId) leagueIds.add(customId);
 
   if (leagueIds.size === 0) {
     if (!silent) {
-      fixtureListEl.innerHTML = `<p class="empty-state">Zaškrtni aspoň jednu ligu, alebo zadaj vlastné ID ligy.</p>`;
+      fixtureListEl.innerHTML = `<p class="empty-state">Zaškrtni aspoň jednu ligu.</p>`;
     }
     return;
   }
