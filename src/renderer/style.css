@@ -27,21 +27,6 @@ html, body {
   color: var(--text);
   font-family: var(--font-body);
   font-size: 14px;
-  position: relative;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("favicon.svg");
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 60vmin 60vmin;
-  filter: brightness(0) invert(1);
-  opacity: 0.05;
-  pointer-events: none;
-  z-index: -1;
 }
 
 button, input {
@@ -442,6 +427,7 @@ button, input {
   overflow-y: auto;
   padding: 28px 32px;
 }
+
 
 .analysis-empty {
   height: 100%;
