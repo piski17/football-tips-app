@@ -11,9 +11,6 @@ import {
   getTeamSquad,
   getPlayerSeasonStats,
   getTeamPlayersWithStats,
-  getFixtureResult,
-  getFixtureCornersAndCards,
-  getFixtureGoalscorerIds,
   getFixtureLineupPlayerIds,
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
@@ -35,7 +32,7 @@ import {
   sendWeeklyReportRemote,
   sendTipResultRemote,
 } from "./tipsStore";
-import { evaluateTip, computeTicketStatus } from "./tipEvaluator";
+import { computeTicketStatus, settleBet } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
 const LEAGUE_PRESETS: LeaguePreset[] = [
@@ -299,51 +296,15 @@ ipcMain.handle("tips:checkResults", async () => {
     if (tip.legs && tip.legs.length > 0) {
       // Tiket - vyhodnotíme každú "nohu" zvlášť (každá môže patriť inému zápasu).
       let anyLegChanged = false;
-
       for (const leg of tip.legs) {
         if (leg.status !== "pending") continue;
-
-        const result = await getFixtureResult(leg.fixtureId);
-        if (!result || result.status !== "FT" || result.homeGoals == null || result.awayGoals == null) {
-          continue; // tento konkrétny zápas sa ešte neodohral
-        }
-
-        let corners: number | null = null;
-        let cards: number | null = null;
-        let shotsOnGoal: number | null = null;
-        let fouls: number | null = null;
-        let offsides: number | null = null;
-        const statsMarkets = ["Rohy", "Karty", "Strely na bránu", "Fauly", "Ofsajdy"];
-        if (statsMarkets.includes(leg.market)) {
-          const stats = await getFixtureCornersAndCards(leg.fixtureId);
-          corners = stats.corners;
-          cards = stats.cards;
-          shotsOnGoal = stats.shotsOnGoal;
-          fouls = stats.fouls;
-          offsides = stats.offsides;
-        }
-
-        let scorerIds: number[] | null = null;
-        if (leg.market === "Strelec gólov") {
-          scorerIds = await getFixtureGoalscorerIds(leg.fixtureId);
-        }
-
-        leg.status = evaluateTip(
-          leg,
-          result.homeGoals,
-          result.awayGoals,
-          corners,
-          cards,
-          scorerIds,
-          shotsOnGoal,
-          fouls,
-          offsides
-        );
-        leg.actualHomeGoals = result.homeGoals;
-        leg.actualAwayGoals = result.awayGoals;
+        const settled = await settleBet(leg);
+        if (!settled) continue; // zápas sa ešte neskončil
+        leg.status = settled.status;
+        leg.actualHomeGoals = settled.homeGoals;
+        leg.actualAwayGoals = settled.awayGoals;
         anyLegChanged = true;
       }
-
       if (anyLegChanged) {
         const overallStatus = computeTicketStatus(tip.legs);
         await updateTip(tip.id, { status: overallStatus, legs: tip.legs });
@@ -351,43 +312,13 @@ ipcMain.handle("tips:checkResults", async () => {
       continue;
     }
 
-    const result = await getFixtureResult(tip.fixtureId);
-    if (!result || result.status !== "FT" || result.homeGoals == null || result.awayGoals == null) {
-      continue; // zápas sa ešte neodohral, alebo výsledok nie je k dispozícii
-    }
-
-    let corners: number | null = null;
-    let cards: number | null = null;
-    let shotsOnGoal: number | null = null;
-    let fouls: number | null = null;
-    let offsides: number | null = null;
-    const statsMarkets = ["Rohy", "Karty", "Strely na bránu", "Fauly", "Ofsajdy"];
-    if (statsMarkets.includes(tip.market)) {
-      const stats = await getFixtureCornersAndCards(tip.fixtureId);
-      corners = stats.corners;
-      cards = stats.cards;
-      shotsOnGoal = stats.shotsOnGoal;
-      fouls = stats.fouls;
-      offsides = stats.offsides;
-    }
-
-    let scorerIds: number[] | null = null;
-    if (tip.market === "Strelec gólov") {
-      scorerIds = await getFixtureGoalscorerIds(tip.fixtureId);
-    }
-
-    const status = evaluateTip(
-      tip,
-      result.homeGoals,
-      result.awayGoals,
-      corners,
-      cards,
-      scorerIds,
-      shotsOnGoal,
-      fouls,
-      offsides
-    );
-    await updateTip(tip.id, { status, actualHomeGoals: result.homeGoals, actualAwayGoals: result.awayGoals });
+    const settled = await settleBet(tip);
+    if (!settled) continue; // zápas sa ešte neskončil
+    await updateTip(tip.id, {
+      status: settled.status,
+      actualHomeGoals: settled.homeGoals,
+      actualAwayGoals: settled.awayGoals,
+    });
   }
 
   return await listTips();
