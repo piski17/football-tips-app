@@ -174,6 +174,8 @@ ipcMain.handle(
         awayFouls: awayExtStats.fouls,
         homeOffsides: homeExtStats.offsides,
         awayOffsides: awayExtStats.offsides,
+        homePossession: homeExtStats.possession,
+        awayPossession: awayExtStats.possession,
       }
     );
 

@@ -1188,24 +1188,29 @@ function renderMarketBreakdown(tips: any[]) {
   `;
 }
 
+const EXCLUDED_STATS_MARKETS: string[] = ["Dvojšanca", "Presný výsledok", "Čisté konto"];
+
 function renderTipsList(tips: any[]) {
-  const won = tips.filter((t) => t.status === "won").length;
-  const lost = tips.filter((t) => t.status === "lost").length;
-  const pending = tips.filter((t) => t.status === "pending").length;
+  // Tipy na trhy, ktoré appka už neponúka (dvojšanca, presný výsledok, čisté
+  // konto), ostávajú v zozname, ale nerátajú sa do štatistík.
+  const statTips = tips.filter((t: any) => !EXCLUDED_STATS_MARKETS.includes(t.market));
+  const won = statTips.filter((t: any) => t.status === "won").length;
+  const lost = statTips.filter((t: any) => t.status === "lost").length;
+  const pending = statTips.filter((t: any) => t.status === "pending").length;
   const decided = won + lost;
   const winRate = decided > 0 ? ((won / decided) * 100).toFixed(0) : "—";
 
   tipsSummaryEl.innerHTML = `
-    <span>Spolu: <strong>${tips.length}</strong></span>
+    <span>Spolu: <strong>${statTips.length}</strong></span>
     <span>Čaká: <strong>${pending}</strong></span>
     <span>Vyhral: <strong>${won}</strong></span>
     <span>Prehral: <strong>${lost}</strong></span>
     <span>Úspešnosť: <strong>${winRate}${decided > 0 ? "%" : ""}</strong></span>
   `;
 
-  renderMarketBreakdown(tips);
-  renderBankrollSimulation(tips);
-  renderCalibrationReport(tips);
+  renderMarketBreakdown(statTips);
+  renderBankrollSimulation(statTips);
+  renderCalibrationReport(statTips);
 
   if (tips.length === 0) {
     tipsListEl.innerHTML = `<p class="empty-state">Zatiaľ nemáš uložené žiadne tipy.</p>`;
