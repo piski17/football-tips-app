@@ -271,6 +271,7 @@ interface FootballApi {
   deleteSubscriber(id: string): Promise<boolean>;
   sendNoTipToday(target: string): Promise<boolean>;
   sendWeeklyReport(target: string): Promise<boolean>;
+  sendDailyResults(target: string, day: string, force: boolean): Promise<any>;
   sendTipResult(id: string, target: string): Promise<boolean>;
   listTips(): Promise<any[]>;
   deleteTip(id: string): Promise<boolean>;
@@ -352,6 +353,7 @@ const checkResultsBtn = document.getElementById("checkResultsBtn") as HTMLButton
 const clearAllTipsBtn = document.getElementById("clearAllTipsBtn") as HTMLButtonElement;
 const noTipTodayBtn = document.getElementById("noTipTodayBtn") as HTMLButtonElement;
 const weeklyReportBtn = document.getElementById("weeklyReportBtn") as HTMLButtonElement;
+const dailyResultsBtn = document.getElementById("dailyResultsBtn") as HTMLButtonElement;
 
 const openSubscribersBtn = document.getElementById("openSubscribersBtn") as HTMLButtonElement;
 const subscribersModal = document.getElementById("subscribersModal") as HTMLElement;
@@ -1663,6 +1665,44 @@ weeklyReportBtn.addEventListener("click", async () => {
     showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
   } finally {
     weeklyReportBtn.disabled = false;
+  }
+});
+
+// ---- Denné vyhodnotenie (všetky tipy a tikety dňa naraz do Telegramu) ----
+/** Deň, za ktorý sa posiela vyhodnotenie: dnes, po polnoci (do 6:00) ešte včerajšok. */
+function dailyResultsDay(): string {
+  const d = new Date();
+  if (d.getHours() < 6) d.setDate(d.getDate() - 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+dailyResultsBtn.addEventListener("click", async () => {
+  const target = await askTelegramTarget();
+  if (!target) return;
+  const day = dailyResultsDay();
+  dailyResultsBtn.disabled = true;
+  try {
+    let res: any = await window.api.sendDailyResults(target, day, false);
+    if (res && res.pendingCount > 0) {
+      const ok = window.confirm(
+        `${res.pendingCount} ${res.pendingCount === 1 ? "tip sa ešte hrá" : res.pendingCount < 5 ? "tipy sa ešte hrajú" : "tipov sa ešte hrá"}. Poslať vyhodnotenie aj tak? (Nedohrané budú označené ⏳.)`
+      );
+      if (!ok) return;
+      res = await window.api.sendDailyResults(target, day, true);
+    }
+    if (res && res.empty) {
+      showToast("Pre dnešok nie sú v histórii žiadne tipy ani tikety.");
+    } else if (res && res.ok) {
+      showToast("Denné vyhodnotenie odoslané.");
+      openTipsHistory();
+    } else {
+      showToast("Nepodarilo sa odoslať - skontroluj nastavenie Telegramu.");
+    }
+  } catch (err: any) {
+    showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+  } finally {
+    dailyResultsBtn.disabled = false;
   }
 });
 

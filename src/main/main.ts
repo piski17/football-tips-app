@@ -31,6 +31,7 @@ import {
   deleteSubscriberRemote,
   sendNoTipTodayRemote,
   sendWeeklyReportRemote,
+  sendDailyResultsRemote,
   sendTipResultRemote,
 } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
@@ -263,6 +264,13 @@ ipcMain.handle("telegram:noTipToday", async (_e, target: "premium" | "vip" | "bo
   await sendNoTipTodayRemote(target);
   return true;
 });
+
+ipcMain.handle(
+  "telegram:dailyResults",
+  async (_e, target: "premium" | "vip" | "both", day: string, force: boolean) => {
+    return await sendDailyResultsRemote(target, day, force);
+  }
+);
 
 ipcMain.handle("telegram:weeklyReport", async (_e, target: "premium" | "vip" | "both") => {
   await sendWeeklyReportRemote(target);

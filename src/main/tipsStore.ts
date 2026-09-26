@@ -157,6 +157,20 @@ export async function sendNoTipTodayRemote(target: "premium" | "vip" | "both"): 
   await webClient().post("/api/telegram/no-tip-today", { target });
 }
 
+export async function sendDailyResultsRemote(
+  target: "premium" | "vip" | "both",
+  day: string,
+  force: boolean
+): Promise<any> {
+  requireWebSync();
+  try {
+    const res = await webClient().post("/api/telegram/daily-results", { target, day, force });
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err?.response?.data?.error ?? err?.message ?? String(err));
+  }
+}
+
 export async function sendWeeklyReportRemote(target: "premium" | "vip" | "both"): Promise<void> {
   requireWebSync();
   await webClient().post("/api/telegram/weekly-report", { target });
