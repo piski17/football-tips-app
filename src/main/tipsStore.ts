@@ -36,7 +36,12 @@ export function webClient() {
 
 export async function saveTip(tip: SavedTip): Promise<void> {
   if (hasWebSync()) {
-    await webClient().post("/api/tips", tip);
+    try {
+      await webClient().post("/api/tips", tip);
+    } catch (err: any) {
+      // Zrozumiteľná hláška zo servera (napr. "Zápas už začal…") namiesto "status code 400".
+      throw new Error(err?.response?.data?.error ?? err?.message ?? String(err));
+    }
     return;
   }
   const tips = readAllLocal();

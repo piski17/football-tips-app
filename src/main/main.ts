@@ -33,7 +33,7 @@ import {
   sendWeeklyReportRemote,
   sendTipResultRemote,
 } from "./tipsStore";
-import { computeTicketStatus, settleBet } from "./tipEvaluator";
+import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
 const LEAGUE_PRESETS: LeaguePreset[] = [
@@ -227,6 +227,7 @@ ipcMain.handle(
 // ---- Uložené tipy (spätné vyhodnotenie) ----
 
 ipcMain.handle("tips:save", async (_e, tip: SavedTip) => {
+  if (tipHasStartedMatch(tip)) throw new Error(MATCH_STARTED_MESSAGE);
   await saveTip(tip);
   return true;
 });

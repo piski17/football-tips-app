@@ -153,6 +153,16 @@ function impliedOdds(probability: number): string {
   return probability > 0 ? (100 / probability).toFixed(2) : "-";
 }
 
+/** Zápas už začal (alebo je odložený/zrušený) - tip ani tiket z neho sa nedá pridať. */
+function matchHasStarted(fixture: any): boolean {
+  const status = fixture?.status ?? "NS";
+  if (!["NS", "TBD"].includes(status)) return true;
+  const t = new Date(fixture?.date).getTime();
+  return !isNaN(t) && t <= Date.now();
+}
+
+const MATCH_STARTED_TEXT = "Zápas už začal – tip ani tiket z neho sa už nedá pridať.";
+
 /** Označenie tipu pridaného ručne napriek kontrole kurzu. */
 function isOverrideTip(t: any): boolean {
   return !!t.overrideFilter || (Array.isArray(t.legs) && t.legs.some((l: any) => l.overrideFilter));
@@ -648,7 +658,7 @@ function renderAnalysis(r: any) {
     ${gamesPlayedHtml}
     ${warningHtml}
 
-    ${topBetsHtml}${noBetsHtml}${lowValueHtml}
+    ${matchHasStarted(r.fixture) ? `<div class="match-locked">⏱ ${MATCH_STARTED_TEXT}</div>` : ""}${topBetsHtml}${noBetsHtml}${lowValueHtml}
     <div id="saveTipMsg"></div>
 
     <div class="prob-section">
@@ -692,6 +702,14 @@ function renderAnalysis(r: any) {
   initSaveTipButton(r);
   wireTicketButtons(r);
   wireScorerSaveButtons(r);
+  if (matchHasStarted(r.fixture)) {
+    document
+      .querySelectorAll<HTMLButtonElement>(".save-best-bet-btn, .add-to-ticket-btn, .scorer-save-btn")
+      .forEach((b) => {
+        b.disabled = true;
+        b.title = MATCH_STARTED_TEXT;
+      });
+  }
 }
 
 function probRow(label: string, value: number): string {
@@ -802,6 +820,10 @@ function wireScorerSaveButtons(r: any) {
   buttons.forEach((btn) => {
     // Nastavíme handler nanovo (aby sa nezdvojoval pri opakovanom volaní).
     btn.onclick = async () => {
+      if (matchHasStarted(r.fixture)) {
+        showToast(MATCH_STARTED_TEXT);
+        return;
+      }
       const playerId = parseInt(btn.dataset.playerId ?? "0", 10);
       const playerName = btn.dataset.playerName ?? "";
       const probability = parseFloat(btn.dataset.probability ?? "0");
@@ -888,6 +910,10 @@ function initSaveTipButton(r: any) {
   buttons.forEach((btn) => {
     btn.onclick = async () => {
       const idx = parseInt(btn.dataset.betIdx ?? "0", 10);
+      if (matchHasStarted(r.fixture)) {
+        showToast(MATCH_STARTED_TEXT);
+        return;
+      }
       const fromLow = btn.dataset.source === "low"; // vyradený tip pridaný ručne
       const chosenBet = (fromLow ? r.lowValueBets : r.bestBets)?.[idx];
       if (!chosenBet) return;
@@ -939,6 +965,10 @@ function wireTicketButtons(r: any) {
   buttons.forEach((btn) => {
     btn.onclick = () => {
       const idx = parseInt(btn.dataset.betIdx ?? "0", 10);
+      if (matchHasStarted(r.fixture)) {
+        showToast(MATCH_STARTED_TEXT);
+        return;
+      }
       const fromLow = btn.dataset.source === "low";
       const bet = (fromLow ? r.lowValueBets : r.bestBets)?.[idx];
       if (!bet) return;
@@ -1048,6 +1078,19 @@ clearTicketBtn.addEventListener("click", () => {
 saveTicketBtn.addEventListener("click", async () => {
   if (ticketItems.length < 2) {
     showToast("Tiket musí obsahovať aspoň 2 tipy.");
+    return;
+  }
+
+  const startedLegs = ticketItems.filter((t: any) => {
+    const time = new Date(t.matchDate).getTime();
+    return !isNaN(time) && time <= Date.now();
+  });
+  if (startedLegs.length > 0) {
+    showToast(
+      `Tiket obsahuje zápas, ktorý už začal: ${startedLegs
+        .map((t: any) => `${translateTeamName(t.homeTeam)} – ${translateTeamName(t.awayTeam)}`)
+        .join(", ")}. Odstráň ho z tiketu.`
+    );
     return;
   }
 
