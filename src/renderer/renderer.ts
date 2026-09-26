@@ -579,6 +579,11 @@ function renderAnalysis(r: any) {
               )}</div>`
             : ""
         }
+        ${
+          bet.valueWarning
+            ? `<div class="tip-explanation" style="color:var(--gold);font-style:normal;">⚠️ ${escapeHtml(bet.valueWarning)}</div>`
+            : ""
+        }
       </div>
     </div>
     <div style="display:flex; gap:8px; margin: 4px 0 8px;">
@@ -592,17 +597,17 @@ function renderAnalysis(r: any) {
   const noBetsHtml =
     topBets.length === 0
       ? `<div class="empty-state" style="margin-bottom:16px;">Pri tomto zápase nie je žiadny tip v pásme 65–75 %${
-          (r.lowValueBets || []).length > 0 ? " s dostatočným kurzom" : ""
+          (r.lowValueBets || []).length > 0 ? ", ktorý by prešiel kontrolou kurzu" : ""
         }.</div>`
       : "";
 
   // Tipy v pásme, ktoré vypadli pre nízky skutočný kurz (bez hodnoty) - len na informáciu.
   const lowValueHtml =
     (r.lowValueBets || []).length > 0
-      ? `<div class="muted small" style="margin: 6px 0 14px;">Vyradené pre nízky kurz (bez hodnoty): ${(r.lowValueBets || [])
+      ? `<div class="muted small" style="margin: 6px 0 14px;">Vyradené po kontrole kurzu: ${(r.lowValueBets || [])
           .map(
             (b: any) =>
-              `${escapeHtml(b.market)}: ${escapeHtml(translateNamesInText(b.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name))} (${b.probability.toFixed(0)} %, kurz ${fmtOdds(b.odds)})`
+              `${escapeHtml(b.market)}: ${escapeHtml(translateNamesInText(b.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name))} (${b.probability.toFixed(0)} %, kurz ${fmtOdds(b.odds)} – ${escapeHtml(b.rejectReason || "bez hodnoty")})`
           )
           .join(" · ")}</div>`
       : "";
