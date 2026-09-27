@@ -33,7 +33,7 @@ import {
   sendNoTipTodayRemote,
   sendWeeklyReportRemote,
   sendDailyResultsRemote,
-  sendTipResultRemote, archiveTip } from "./tipsStore";
+  sendTipResultRemote, archiveTip, editTip } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -297,6 +297,11 @@ ipcMain.handle("telegram:tipResult", async (_e, id: string, target: "premium" | 
 
 ipcMain.handle("tips:list", async () => {
   return await listTips();
+});
+
+ipcMain.handle("tips:edit", async (_e, id: string, edit: any) => {
+  await editTip(id, edit);
+  return true;
 });
 
 ipcMain.handle("tips:archive", async (_e, id: string, archived: boolean) => {

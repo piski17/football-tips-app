@@ -1,3 +1,4 @@
+import { TipEdit, buildTipEdit } from "./tipEvaluator";
 import * as fs from "fs";
 import * as path from "path";
 import axios from "axios";
@@ -80,6 +81,21 @@ export async function updateTip(id: string, updates: Partial<SavedTip>): Promise
 }
 
 /** Zmaže tip len ak je ešte "pending" - už vyhodnotené tipy (won/lost/void) sa nedajú zmazať, aby zostala história presná. */
+/** Ručná oprava tipu (výsledok, kurz, výsledky zápasov tiketu). */
+export async function editTip(id: string, edit: TipEdit): Promise<void> {
+  if (hasWebSync()) {
+    try {
+      await webClient().post(`/api/tips/${encodeURIComponent(id)}/edit`, edit);
+    } catch (err: any) {
+      throw new Error(err?.response?.data?.error ?? err?.message ?? String(err));
+    }
+    return;
+  }
+  const tip = readAllLocal().find((t) => t.id === id);
+  if (!tip) throw new Error("Tip sa nenašiel.");
+  await updateTip(id, buildTipEdit(tip, edit));
+}
+
 /** Skryje (archived = true) alebo vráti tip do histórie. Tip ostáva uložený. */
 export async function archiveTip(id: string, archived: boolean): Promise<void> {
   if (hasWebSync()) {
