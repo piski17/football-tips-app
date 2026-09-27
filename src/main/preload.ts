@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld("api", {
   sendTipResult: (id: string, target: string) => ipcRenderer.invoke("telegram:tipResult", id, target),
   listTips: () => ipcRenderer.invoke("tips:list"),
   deleteTip: (id: string) => ipcRenderer.invoke("tips:delete", id),
+  archiveTip: (id: string, archived: boolean) => ipcRenderer.invoke("tips:archive", id, archived),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),
   clearAllTips: () => ipcRenderer.invoke("tips:clearAll"),
 

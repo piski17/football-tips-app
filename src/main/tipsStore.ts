@@ -80,6 +80,19 @@ export async function updateTip(id: string, updates: Partial<SavedTip>): Promise
 }
 
 /** Zmaže tip len ak je ešte "pending" - už vyhodnotené tipy (won/lost/void) sa nedajú zmazať, aby zostala história presná. */
+/** Skryje (archived = true) alebo vráti tip do histórie. Tip ostáva uložený. */
+export async function archiveTip(id: string, archived: boolean): Promise<void> {
+  if (hasWebSync()) {
+    try {
+      await webClient().post(`/api/tips/${encodeURIComponent(id)}/archive`, { archived });
+    } catch (err: any) {
+      throw new Error(err?.response?.data?.error ?? err?.message ?? String(err));
+    }
+    return;
+  }
+  await updateTip(id, { archived });
+}
+
 export async function deleteTip(id: string): Promise<void> {
   if (hasWebSync()) {
     await webClient().delete(`/api/tips/${id}`);
