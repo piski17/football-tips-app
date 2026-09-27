@@ -240,7 +240,8 @@ ipcMain.handle(
 // ---- Uložené tipy (spätné vyhodnotenie) ----
 
 ipcMain.handle("tips:save", async (_e, tip: SavedTip) => {
-  if (tipHasStartedMatch(tip)) throw new Error(MATCH_STARTED_MESSAGE);
+  const isManualResult = tip.manualEntry === true && ["won", "lost", "void"].includes(tip.status);
+  if (!isManualResult && tipHasStartedMatch(tip)) throw new Error(MATCH_STARTED_MESSAGE);
   await saveTip(tip);
   return true;
 });
