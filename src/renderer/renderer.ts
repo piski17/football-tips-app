@@ -149,6 +149,21 @@ function translateFormLetter(letter: string): string {
  * uložené dáta (SavedTip.homeTeam/awayTeam) zostávajú v pôvodnom tvare, aby
  * fungovalo vyhodnocovanie výsledkov (tipEvaluator porovnáva presne s nimi).
  */
+/** Slovenský tvar podľa počtu: plural(3, "tip", "tipy", "tipov") -> "3 tipy". */
+/** Číslo so slovenskou desatinnou čiarkou: fmtNum(1.845, 2) -> "1,85". */
+function fmtNum(n: number, digits: number): string {
+  return Number(n).toFixed(digits).replace(".", ",");
+}
+
+/** Číslo so znamienkom: +1,5 / −0,8 (typografické mínus). */
+function signed(n: number, digits: number): string {
+  return (n > 0 ? "+" : n < 0 ? "−" : "") + fmtNum(Math.abs(n), digits);
+}
+
+function plural(n: number, one: string, few: string, many: string): string {
+  return n + " " + (n === 1 ? one : n >= 2 && n <= 4 ? few : many);
+}
+
 function impliedOdds(probability: number): string {
   return probability > 0 ? (100 / probability).toFixed(2) : "-";
 }
@@ -186,9 +201,9 @@ function tipOddsLabel(t: any) {
 function betOddsHtml(bet: any) {
   if (typeof bet.odds === "number" && bet.odds > 1) {
     const ev = Math.round(((bet.expectedValue ?? 0) - 1) * 100);
-    return ` · kurz <strong>${fmtOdds(bet.odds)}</strong> <span class="muted small">(${bet.oddsBookmakers} stáv.)</span> · hodnota <strong style="color:var(--success)">${ev >= 0 ? "+" : ""}${ev} %</strong>`;
+    return ` · kurz <strong>${fmtOdds(bet.odds)}</strong> <span class="muted small">(${bet.oddsBookmakers} stáv.)</span> · hodnota <strong style="color:var(--success)">${signed(ev, 0)} %</strong>`;
   }
-  return ` · kurz ~${impliedOdds(bet.probability).replace(".", ",")} <span class="muted small">(odhad - stávkovky kurz neponúkajú)</span>`;
+  return ` · kurz ~${impliedOdds(bet.probability).replace(".", ",")} <span class="muted small">(odhad – stávkovky kurz neponúkajú)</span>`;
 }
 
 function skeletonHtml(rows: number = 3): string {
@@ -221,6 +236,8 @@ function translateNamesInText(text: string | undefined, homeOriginal: string, aw
   // uložené dáta ostávajú bez zmeny kvôli vyhodnocovaniu).
   result = result.replace(/\bOver (\d+(?:\.\d+)?)/g, (_m, n) => "Nad " + n.replace(".", ","));
   result = result.replace(/\bUnder (\d+(?:\.\d+)?)/g, (_m, n) => "Pod " + n.replace(".", ","));
+  // Desatinné čísla po slovensky (1.8 -> 1,8) - vysvetlenia tipov a varovania.
+  result = result.replace(/(\d)\.(\d)/g, "$1,$2");
   return result;
 }
 
@@ -240,7 +257,7 @@ function translateNamesInText(text: string | undefined, homeOriginal: string, aw
     const progress = Math.min(1, elapsed / duration);
     const percent = Math.round(progress * 100);
     fill.style.width = `${percent}%`;
-    pct.textContent = `${percent}%`;
+    pct.textContent = `${percent} %`;
     if (progress < 1) requestAnimationFrame(tick);
   }
 
@@ -462,7 +479,7 @@ setInterval(() => {
 
 function renderGroupedFixtureList(results: Array<{ leagueId: number; fixtures: any[] }>) {
   const totalCount = results.reduce((sum, r) => sum + r.fixtures.length, 0);
-  fixtureCountEl.textContent = totalCount ? `${totalCount} zápasov` : "";
+  fixtureCountEl.textContent = totalCount ? `${plural(totalCount, "zápas", "zápasy", "zápasov")}` : "";
 
   const groupsWithMatches = results.filter((r) => r.fixtures.length > 0);
 
@@ -592,7 +609,7 @@ function renderAnalysis(r: any) {
         translateNamesInText(bet.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name)
       )}</div>
         <div class="tip-meta">
-          ${idx === 0 ? "Najvyššia dôvera zo všetkých trhov · " : ""}${bet.probability.toFixed(0)}%${betOddsHtml(bet)}
+          ${idx === 0 ? "Najvyššia dôvera zo všetkých trhov · " : ""}${bet.probability.toFixed(0)} %${betOddsHtml(bet)}
         </div>
         ${
           bet.explanation
@@ -688,7 +705,7 @@ function renderAnalysis(r: any) {
         ${
           r.lineupConfirmed?.home || r.lineupConfirmed?.away
             ? "✓ Počíta z potvrdenej zostavy na zápas (kde je k dispozícii)."
-            : "Zostava na tento zápas ešte nie je potvrdená (zvyčajne sa objaví cca hodinu pred výkopom) - počíta sa z celej súpisky."
+            : "Zostava na tento zápas ešte nie je potvrdená (zvyčajne sa objaví cca hodinu pred výkopom) – počíta sa z celej súpisky."
         }
       </p>
       ${bestScorerCard(r.bestScorer)}
@@ -719,7 +736,7 @@ function probRow(label: string, value: number): string {
     <div class="prob-bar-row">
       <span class="prob-label">${escapeHtml(label)}</span>
       <div class="prob-bar-track"><div class="prob-bar-fill" style="width:${clampPercent(value)}%"></div></div>
-      <span class="prob-value">${value.toFixed(0)}%</span>
+      <span class="prob-value">${value.toFixed(0)} %</span>
     </div>
   `;
 }
@@ -745,8 +762,8 @@ function teamStatCard(
     <div class="stat-card">
       <h4>${escapeHtml(name)}</h4>
       <div class="form-pills">${pills || '<span class="muted small">bez dát o forme</span>'}</div>
-      <div class="stat-line"><span>Vážené skóre formy</span><strong>${formScore.toFixed(2)} / 3.00</strong></div>
-      <div class="stat-line"><span>Očakávané góly</span><strong>${xg.toFixed(2)}</strong></div>
+      <div class="stat-line"><span>Vážené skóre formy</span><strong>${fmtNum(formScore, 2)} / 3,00</strong></div>
+      <div class="stat-line"><span>Očakávané góly</span><strong>${fmtNum(xg, 2)}</strong></div>
       ${historyLine}
     </div>
   `;
@@ -772,7 +789,7 @@ function bestScorerCard(best: any): string {
         <div class="tip-details">
           <div class="tip-label" style="font-size:13px;">Pravdepodobnosť gólu</div>
         </div>
-        <div class="best-bet-prob" style="margin-left:auto;">${prediction.probabilityToScore.toFixed(0)}%</div>
+        <div class="best-bet-prob" style="margin-left:auto;">${prediction.probabilityToScore.toFixed(0)} %</div>
       </div>
       <button
         class="tip-save-btn scorer-save-btn"
@@ -1012,7 +1029,7 @@ function renderTicket() {
   if (ticketItems.length === 0) {
     ticketSummaryEl.innerHTML = "";
     ticketValueNoteEl.innerHTML = "";
-    ticketListEl.innerHTML = `<p class="empty-state">Tiket je zatiaľ prázdny - pridaj tipy tlačidlom "+ Do tiketu" pri analýze zápasu.</p>`;
+    ticketListEl.innerHTML = `<p class="empty-state">Tiket je zatiaľ prázdny – pridaj tipy tlačidlom „+ Do tiketu“ pri analýze zápasu.</p>`;
     return;
   }
 
@@ -1024,12 +1041,12 @@ function renderTicket() {
 
   ticketSummaryEl.innerHTML = `
     <span>Počet tipov: <strong>${ticketItems.length}</strong></span>
-    <span>Kombinovaná pravdepodobnosť: <strong>${combinedProbability.toFixed(1)}%</strong></span>
-    <span>${realTicketOdds ? `Kurz: <strong>${fmtOdds(realTicketOdds)}</strong>` : `Odvodený kurz: <strong>~${impliedOdds.toFixed(2)}</strong>`}</span>
+    <span>Kombinovaná pravdepodobnosť: <strong>${fmtNum(combinedProbability, 1)} %</strong></span>
+    <span>${realTicketOdds ? `Kurz: <strong>${fmtOdds(realTicketOdds)}</strong>` : `Odvodený kurz: <strong>~${fmtNum(impliedOdds, 2)}</strong>`}</span>
   `;
 
   ticketValueNoteEl.innerHTML = isGoodValue
-    ? `<p class="muted small" style="color: var(--accent-strong); margin: 8px 0 0;">✓ Hodnotný tiket - kombinovaný kurz je 2.0 alebo vyšší.</p>`
+    ? `<p class="muted small" style="color: var(--accent-strong); margin: 8px 0 0;">✓ Hodnotný tiket – kombinovaný kurz je 2.0 alebo vyšší.</p>`
     : `<p class="muted small" style="color: var(--gold); margin: 8px 0 0;">⚠️ Kurz je zatiaľ pod 2.0 - pridaj ešte aspoň jeden tip, aby mal tiket lepšiu hodnotu.</p>`;
 
   ticketListEl.innerHTML = ticketItems
@@ -1038,7 +1055,7 @@ function renderTicket() {
     <div class="tip-row">
       <div class="tip-row-info">
         <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))}</div>
-        <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}%</div>
+        <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)} %</div>
       </div>
       <button class="tip-delete-btn" data-ticket-id="${t.id}" title="Odstrániť z tiketu">✕</button>
     </div>
@@ -1105,10 +1122,10 @@ saveTicketBtn.addEventListener("click", async () => {
     season: ticketItems[0].season,
     leagueName: "Tiket",
     homeTeam: "Tiket",
-    awayTeam: `${ticketItems.length} zápasov`,
+    awayTeam: `${plural(ticketItems.length, "zápas", "zápasy", "zápasov")}`,
     matchDate: new Date().toISOString(),
     market: "Tiket",
-    selection: `${ticketItems.length} tipov`,
+    selection: `${plural(ticketItems.length, "tip", "tipy", "tipov")}`,
     probability: combinedProbability,
     ...(ticketItems.some((t: any) => t.overrideFilter) ? { overrideFilter: true } : {}),
     odds: ticketItems.every((t: any) => typeof t.odds === "number" && t.odds > 1)
@@ -1178,11 +1195,11 @@ function renderCalibrationReport(tips: any[]) {
   }
 
   const buckets = [
-    { min: 50, max: 60, label: "50-60%" },
-    { min: 60, max: 70, label: "60-70%" },
-    { min: 70, max: 80, label: "70-80%" },
-    { min: 80, max: 90, label: "80-90%" },
-    { min: 90, max: 100, label: "90-100%" },
+    { min: 50, max: 60, label: "50–60 %" },
+    { min: 60, max: 70, label: "60–70 %" },
+    { min: 70, max: 80, label: "70–80 %" },
+    { min: 80, max: 90, label: "80–90 %" },
+    { min: 90, max: 100, label: "90–100 %" },
   ];
 
   const rows = buckets
@@ -1208,7 +1225,7 @@ function renderCalibrationReport(tips: any[]) {
       <div class="market-breakdown-row">
         <div class="market-breakdown-label">
           <span>Predikcia ${r.label}</span>
-          <span class="muted small">realita: ${r.actualPct.toFixed(0)}% · ${r.count} tipov</span>
+          <span class="muted small">realita: ${r.actualPct.toFixed(0)} % · ${plural(r.count, "tip", "tipy", "tipov")}</span>
         </div>
         <div class="market-breakdown-bar" style="position:relative;">
           <div class="market-breakdown-bar-fill" style="width: ${r.actualPct}%;"></div>
@@ -1262,9 +1279,7 @@ function renderBankrollSimulation(tips: any[]) {
     <div class="bankroll-summary">
       <span>Použitých tipov: <strong>${resolved.length}</strong></span>
       <span>Konečný bankroll: <strong>${bankroll.toFixed(0)}€</strong></span>
-      <span>Celková zmena: <strong style="color:${totalReturn >= 0 ? "var(--success)" : "var(--danger)"};">${
-    totalReturn >= 0 ? "+" : ""
-  }${totalReturn.toFixed(1)}%</strong></span>
+      <span>Celková zmena: <strong style="color:${totalReturn >= 0 ? "var(--success)" : "var(--danger)"};">${signed(totalReturn, 1)} %</strong></span>
     </div>
     <div class="bankroll-chart">${barsHtml}</div>
   `;
@@ -1295,7 +1310,7 @@ function renderMarketBreakdown(tips: any[]) {
         <div class="market-breakdown-row">
           <div class="market-breakdown-label">
             <span>${escapeHtml(market)}</span>
-            <span class="muted small">${stats.won}/${stats.total} · ${pct.toFixed(0)}%</span>
+            <span class="muted small">${stats.won}/${stats.total} · ${pct.toFixed(0)} %</span>
           </div>
           <div class="market-breakdown-bar">
             <div class="market-breakdown-bar-fill" style="width: ${pct}%;"></div>
@@ -1316,7 +1331,7 @@ function overrideSummaryHtml(tips: any[]) {
   const withOdds = decided.filter((t: any) => typeof t.odds === "number" && t.odds > 1);
   const profit = withOdds.reduce((sum: number, t: any) => sum + (t.status === "won" ? t.odds - 1 : -1), 0);
   return `<span title="Tipy vyradené kontrolou kurzu, ktoré si pridal ručne">⚠️ Mimo filtra: <strong>${won} z ${decided.length}</strong>${
-    withOdds.length > 0 ? ` · zisk <strong>${profit >= 0 ? "+" : ""}${profit.toFixed(1).replace(".", ",")} j.</strong>` : ""
+    withOdds.length > 0 ? ` · zisk <strong>${signed(profit, 1)} j.</strong>` : ""
   }${ov.length > decided.length ? ` · čaká ${ov.length - decided.length}` : ""}</span>`;
 }
 
@@ -1359,7 +1374,7 @@ function renderTipsList(tips: any[]) {
           ? `<span class="tip-result-icon won">✓</span>`
           : t.status === "lost"
           ? `<span class="tip-result-icon lost">✕</span>`
-          : `<span class="tip-status ${t.status}">${t.status === "void" ? "Neurčené" : "Čaká"}</span>`;
+          : `<span class="tip-status ${t.status}">${t.status === "void" ? "Vrátené" : "Čaká"}</span>`;
 
       if (t.legs && t.legs.length > 0) {
         const legsHtml = t.legs
@@ -1368,7 +1383,7 @@ function renderTipsList(tips: any[]) {
             <div class="tip-row-market" style="padding-left: 10px; border-left: 2px solid var(--border); margin-top: 4px;">
               ${escapeHtml(translateTeamName(leg.homeTeam))} — ${escapeHtml(translateTeamName(leg.awayTeam))}: ${escapeHtml(leg.market)}: ${escapeHtml(
               translateNamesInText(leg.selection, leg.homeTeam, leg.awayTeam)
-            )} · ${leg.probability.toFixed(0)}%
+            )} · ${leg.probability.toFixed(0)} %
             </div>`
           )
           .join("");
@@ -1376,8 +1391,8 @@ function renderTipsList(tips: any[]) {
         return `
         <div class="tip-row ${rowClass}" data-row-id="${t.id}" style="align-items: flex-start;">
           <div class="tip-row-info">
-            <div class="tip-row-match">🎫 Tiket (${t.legs.length} tipov) <span class="muted small">(${date})</span></div>
-            <div class="tip-row-market">Kombinovaná pravdepodobnosť: ${t.probability.toFixed(1)}% · kurz ${tipOddsLabel(t)}${overrideBadge(t)}</div>
+            <div class="tip-row-match">🎫 Tiket (${plural(t.legs.length, "tip", "tipy", "tipov")}) <span class="muted small">(${date})</span></div>
+            <div class="tip-row-market">Kombinovaná pravdepodobnosť: ${fmtNum(t.probability, 1)} % · kurz ${tipOddsLabel(t)}${overrideBadge(t)}</div>
             ${legsHtml}
           </div>
           ${resultIconHtml}
@@ -1394,7 +1409,7 @@ function renderTipsList(tips: any[]) {
         <div class="tip-row ${rowClass}" data-row-id="${t.id}">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))} <span class="muted small">(${date})</span></div>
-            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)}% · kurz ${tipOddsLabel(t)}${overrideBadge(t)}</div>
+            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)} % · kurz ${tipOddsLabel(t)}${overrideBadge(t)}</div>
           </div>
           ${resultIconHtml}
           ${
@@ -1697,7 +1712,7 @@ dailyResultsBtn.addEventListener("click", async () => {
       showToast("Denné vyhodnotenie odoslané.");
       openTipsHistory();
     } else {
-      showToast("Nepodarilo sa odoslať - skontroluj nastavenie Telegramu.");
+      showToast("Nepodarilo sa odoslať – skontroluj nastavenie Telegramu.");
     }
   } catch (err: any) {
     showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
