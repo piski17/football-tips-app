@@ -204,6 +204,8 @@ ipcMain.handle(
         awayOffsides: mixStat(awayExtStats.offsides, homeExtStats.offsidesAgainst),
         homePossession: homeExtStats.possession,
         awayPossession: awayExtStats.possession,
+        homeCards: mixStat(homeExtStats.cards, awayExtStats.cardsAgainst),
+        awayCards: mixStat(awayExtStats.cards, homeExtStats.cardsAgainst),
       },
       marketOdds,
       h2hStats
