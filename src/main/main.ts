@@ -14,6 +14,7 @@ import {
   getFixtureLineupPlayerIds,
   getFixtureOdds,
   getRecentFormAnyCompetition,
+  getHeadToHeadStats,
 } from "./apiClient";
 import { predictMatch, predictPlayerGoal, DEFAULT_WEIGHTS } from "./predictor";
 import { LeaguePreset, SavedTip } from "./types";
@@ -166,6 +167,8 @@ ipcMain.handle(
       getFixtureOdds(fixture.fixtureId),
     ]);
 
+    // Štatistiky posledných vzájomných zápasov (rohy, karty…) – pri chybe sa jednoducho nepoužijú.
+    const h2hStats = await getHeadToHeadStats(h2h, fixture.homeTeam.name).catch(() => []);
     const result = predictMatch(
       fixture,
       homeStats,
@@ -191,7 +194,8 @@ ipcMain.handle(
         homePossession: homeExtStats.possession,
         awayPossession: awayExtStats.possession,
       },
-      marketOdds
+      marketOdds,
+      h2hStats
     );
 
     return result;
