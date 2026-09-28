@@ -96,6 +96,17 @@ app.on("activate", () => {
 
 // ---- IPC handlery ----
 
+/**
+ * Očakávaná hodnota štatistiky tímu v zápase: priemer toho, čo tím sám robí
+ * (napr. koľko rohov získava), a toho, čo súper dovoľuje (koľko rohov púšťa).
+ * Ak údaj o súperovi chýba, použije sa len vlastný priemer tímu.
+ */
+function mixStat(own: number | null | undefined, opponentAllows: number | null | undefined): number | null {
+  if (own == null) return opponentAllows ?? null;
+  if (opponentAllows == null) return own;
+  return (own + opponentAllows) / 2;
+}
+
 ipcMain.handle("settings:hasApiKey", () => hasApiKey());
 ipcMain.handle("settings:getApiKey", () => getApiKey());
 ipcMain.handle("settings:setApiKey", (_e, key: string) => {
@@ -178,19 +189,19 @@ ipcMain.handle(
       DEFAULT_WEIGHTS,
       homePriors,
       awayPriors,
-      homeExtStats.corners,
-      awayExtStats.corners,
+      mixStat(homeExtStats.corners, awayExtStats.cornersAgainst),
+      mixStat(awayExtStats.corners, homeExtStats.cornersAgainst),
       homePlayers,
       awayPlayers,
       lineup.homeIds,
       lineup.awayIds,
       {
-        homeShotsOnGoal: homeExtStats.shotsOnGoal,
-        awayShotsOnGoal: awayExtStats.shotsOnGoal,
-        homeFouls: homeExtStats.fouls,
-        awayFouls: awayExtStats.fouls,
-        homeOffsides: homeExtStats.offsides,
-        awayOffsides: awayExtStats.offsides,
+        homeShotsOnGoal: mixStat(homeExtStats.shotsOnGoal, awayExtStats.shotsOnGoalAgainst),
+        awayShotsOnGoal: mixStat(awayExtStats.shotsOnGoal, homeExtStats.shotsOnGoalAgainst),
+        homeFouls: mixStat(homeExtStats.fouls, awayExtStats.foulsAgainst),
+        awayFouls: mixStat(awayExtStats.fouls, homeExtStats.foulsAgainst),
+        homeOffsides: mixStat(homeExtStats.offsides, awayExtStats.offsidesAgainst),
+        awayOffsides: mixStat(awayExtStats.offsides, homeExtStats.offsidesAgainst),
         homePossession: homeExtStats.possession,
         awayPossession: awayExtStats.possession,
       },
