@@ -303,6 +303,7 @@ interface FootballApi {
   deleteTip(id: string): Promise<boolean>;
   archiveTip(id: string, archived: boolean): Promise<boolean>;
   editTip(id: string, edit: any): Promise<boolean>;
+  getShadowSummary(): Promise<any>;
   checkTipResults(): Promise<any[]>;
   clearAllTips(): Promise<boolean>;
   getWebSyncSettings(): Promise<{ url: string; user: string; password: string }>;
@@ -1199,6 +1200,7 @@ saveTicketBtn.addEventListener("click", async () => {
 // ---- História tipov ----
 
 async function openTipsHistory() {
+  void renderShadowSummary();
   tipsModal.hidden = false;
   tipsListEl.innerHTML = skeletonHtml(2);
   try {
@@ -2221,4 +2223,27 @@ function openEditTip(tip: any) {
       $e("editSaveBtn").disabled = false;
     }
   };
+}
+
+// ---- Tichá evidencia tipov vyradených pre rozpor so stávkovkami ----
+async function renderShadowSummary() {
+  const el = document.getElementById("shadowSummary");
+  if (!el) return;
+  try {
+    const d: any = await window.api.getShadowSummary();
+    if (!d) { el.textContent = ""; return; }
+    if (!d.settled) {
+      el.innerHTML = d.total
+        ? `Tichá evidencia vyradených tipov (rozpor so stávkovkami): ${d.total} zapísaných, zatiaľ žiadny vyhodnotený.`
+        : "";
+      return;
+    }
+    const pct = (v: any) => (v == null ? "–" : `${Math.round(v)} %`);
+    let t = `Tichá evidencia vyradených tipov (rozpor so stávkovkami): <strong>${d.won} z ${d.settled}</strong> vyšlo (<strong>${pct(d.hitRate)}</strong>), model im dával v priemere ${pct(d.avgModel)}, stávkovky ${pct(d.avgMarket)}.`;
+    if (d.withOdds) t += ` Keby sa stavili: <strong class="${d.profit >= 0 ? "text-success" : "text-danger"}">${d.profit >= 0 ? "+" : "−"}${Math.abs(d.profit).toFixed(1).replace(".", ",")} j.</strong>`;
+    if (d.pending) t += ` Čaká: ${d.pending}.`;
+    el.innerHTML = t;
+  } catch {
+    el.textContent = "";
+  }
 }

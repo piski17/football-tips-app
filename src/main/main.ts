@@ -34,7 +34,7 @@ import {
   sendNoTipTodayRemote,
   sendWeeklyReportRemote,
   sendDailyResultsRemote,
-  sendTipResultRemote, archiveTip, editTip } from "./tipsStore";
+  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -211,6 +211,9 @@ ipcMain.handle(
       h2hStats
     );
 
+    // Tichá evidencia tipov vyradených pre rozpor so stávkovkami – posiela sa na web
+    // (len pri zapnutej synchronizácii), na pozadí, nič neblokuje.
+    void recordShadowRemote(fixture, (result as any).lowValueBets ?? []);
     return result;
   }
 );
@@ -315,6 +318,8 @@ ipcMain.handle("telegram:tipResult", async (_e, id: string, target: "premium" | 
 ipcMain.handle("tips:list", async () => {
   return await listTips();
 });
+
+ipcMain.handle("shadow:summary", async () => getShadowSummaryRemote());
 
 ipcMain.handle("tips:edit", async (_e, id: string, edit: any) => {
   await editTip(id, edit);

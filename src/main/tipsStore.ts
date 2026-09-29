@@ -216,3 +216,28 @@ export async function sendTipResultRemote(id: string, target: "premium" | "vip" 
   requireWebSync();
   await webClient().post(`/api/tips/${id}/telegram-result`, { target });
 }
+
+/** Tichá evidencia: vyradené tipy (rozpor so stávkovkami) pošle na web, ak je zapnutá synchronizácia. */
+export async function recordShadowRemote(fixture: any, picks: any[]): Promise<void> {
+  if (!hasWebSync()) return;
+  const conflicts = (picks || []).filter((p) => p && p.marketConflict);
+  if (!conflicts.length) return;
+  try {
+    await webClient().post("/api/shadow/record", {
+      fixture: { fixtureId: fixture.fixtureId, date: fixture.date, homeTeam: { name: fixture.homeTeam.name }, awayTeam: { name: fixture.awayTeam.name } },
+      picks: conflicts,
+    });
+  } catch {
+    // evidencia nie je kritická
+  }
+}
+
+/** Súhrn tichej evidencie z webu (bez synchronizácie nie je k dispozícii). */
+export async function getShadowSummaryRemote(): Promise<any | null> {
+  if (!hasWebSync()) return null;
+  try {
+    return (await webClient().get("/api/shadow/summary")).data;
+  } catch {
+    return null;
+  }
+}
