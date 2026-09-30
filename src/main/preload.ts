@@ -41,6 +41,8 @@ contextBridge.exposeInMainWorld("api", {
   archiveTip: (id: string, archived: boolean) => ipcRenderer.invoke("tips:archive", id, archived),
   editTip: (id: string, edit: any) => ipcRenderer.invoke("tips:edit", id, edit),
   getShadowSummary: () => ipcRenderer.invoke("shadow:summary"),
+  listLeads: () => ipcRenderer.invoke("leads:list"),
+  deleteLead: (chatId: string) => ipcRenderer.invoke("leads:delete", chatId),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),
   clearAllTips: () => ipcRenderer.invoke("tips:clearAll"),
 

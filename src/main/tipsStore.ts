@@ -241,3 +241,13 @@ export async function getShadowSummaryRemote(): Promise<any | null> {
     return null;
   }
 }
+
+/** Poradovník záujemcov z webu (len pri zapnutej synchronizácii s webom). */
+export async function listLeadsRemote(): Promise<any[]> {
+  if (!hasWebSync()) return [];
+  return (await webClient().get("/api/leads")).data ?? [];
+}
+export async function deleteLeadRemote(chatId: string): Promise<void> {
+  if (!hasWebSync()) return;
+  await webClient().delete(`/api/leads/${encodeURIComponent(chatId)}`);
+}

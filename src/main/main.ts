@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeImage } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, shell } from "electron";
 import * as path from "path";
 import { getApiKey, setApiKey, hasApiKey, getWebSyncSettings, setWebSyncSettings, WebSyncSettings, hasWebSync } from "./config";
 import {
@@ -34,7 +34,7 @@ import {
   sendNoTipTodayRemote,
   sendWeeklyReportRemote,
   sendDailyResultsRemote,
-  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote } from "./tipsStore";
+  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, listLeadsRemote, deleteLeadRemote } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -63,6 +63,38 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  // Externé odkazy (Telegram tg://, https://t.me…) otvoriť v systéme, nie v okne appky.
+
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+
+
+    if (/^(https?:|tg:|mailto:)/.test(url)) void shell.openExternal(url);
+
+
+    return { action: "deny" };
+
+
+  });
+
+
+  mainWindow.webContents.on("will-navigate", (e, url) => {
+
+
+    if (/^(https?:|tg:|mailto:)/.test(url)) {
+
+
+      e.preventDefault();
+
+
+      void shell.openExternal(url);
+
+
+    }
+
+
   });
 
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
@@ -320,6 +352,8 @@ ipcMain.handle("tips:list", async () => {
 });
 
 ipcMain.handle("shadow:summary", async () => getShadowSummaryRemote());
+ipcMain.handle("leads:list", async () => listLeadsRemote());
+ipcMain.handle("leads:delete", async (_e, chatId: string) => deleteLeadRemote(chatId));
 
 ipcMain.handle("tips:edit", async (_e, id: string, edit: any) => {
   await editTip(id, edit);
