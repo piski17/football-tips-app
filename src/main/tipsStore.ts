@@ -242,6 +242,16 @@ export async function getShadowSummaryRemote(): Promise<any | null> {
   }
 }
 
+/** Uzatvárací kurz (CLV) – počíta ho web, appka ho len zobrazí. */
+export async function getClvSummaryRemote(): Promise<any | null> {
+  if (!hasWebSync()) return null;
+  try {
+    return (await webClient().get("/api/clv/summary")).data;
+  } catch {
+    return null;
+  }
+}
+
 /** Poradovník záujemcov z webu (len pri zapnutej synchronizácii s webom). */
 export async function listLeadsRemote(): Promise<any[]> {
   if (!hasWebSync()) return [];

@@ -257,6 +257,11 @@ export interface TeamExtendedStatsAverages {
   /** Karty tímu (žlté + červené) a karty jeho súperov, priemer na zápas. */
   cards?: number | null;
   cardsAgainst?: number | null;
+  /** Góly tímu a jeho súperov v posledných zápasoch (novšie s väčšou váhou) – aktuálna forma. */
+  goalsFor?: number | null;
+  goalsAgainst?: number | null;
+  /** Z koľkých zápasov sa forma gólov počítala. */
+  goalsGames?: number;
 }
 
 /** Hodnota štatistiky z API - číslo, alebo percento ako text ("55%"). */
@@ -275,7 +280,7 @@ export async function getTeamExtendedStatsAverages(
   teamId: number,
   lastN: number = 10
 ): Promise<TeamExtendedStatsAverages> {
-  const cacheKey = `extStatsAvg3:${leagueId}:${season}:${teamId}:${lastN}`;
+  const cacheKey = `extStatsAvg4:${leagueId}:${season}:${teamId}:${lastN}`;
   const cached = getCached<TeamExtendedStatsAverages>(cacheKey);
   if (cached !== undefined) return cached;
 
@@ -389,7 +394,24 @@ export async function getTeamExtendedStatsAverages(
       return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
     };
 
+    // Forma podľa gólov: posledné zápasy tímu, každý starší zápas má váhu × 0,9.
+    const goalRows = fixtures
+      .filter((f: any) => f?.goals?.home != null && f?.goals?.away != null)
+      .sort((a: any, b: any) => new Date(b.fixture?.date).getTime() - new Date(a.fixture?.date).getTime())
+      .map((f: any) => {
+        const isHome = f.teams?.home?.id === teamId;
+        return { gf: Number(isHome ? f.goals.home : f.goals.away), ga: Number(isHome ? f.goals.away : f.goals.home) };
+      });
+    let gw = 0, gfSum = 0, gaSum = 0;
+    goalRows.forEach((r, i) => {
+      const w = Math.pow(0.9, i);
+      gw += w; gfSum += r.gf * w; gaSum += r.ga * w;
+    });
+
     const result: TeamExtendedStatsAverages = {
+      goalsFor: gw > 0 ? gfSum / gw : null,
+      goalsAgainst: gw > 0 ? gaSum / gw : null,
+      goalsGames: goalRows.length,
       corners: average("corners"),
       shotsOnGoal: average("shotsOnGoal"),
       fouls: average("fouls"),

@@ -34,7 +34,7 @@ import {
   sendNoTipTodayRemote,
   sendWeeklyReportRemote,
   sendDailyResultsRemote,
-  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, listLeadsRemote, deleteLeadRemote } from "./tipsStore";
+  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, getClvSummaryRemote, listLeadsRemote, deleteLeadRemote } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -240,7 +240,8 @@ ipcMain.handle(
         awayCards: mixStat(awayExtStats.cards, homeExtStats.cardsAgainst),
       },
       marketOdds,
-      h2hStats
+      h2hStats,
+      { home: { goalsFor: homeExtStats.goalsFor ?? null, goalsAgainst: homeExtStats.goalsAgainst ?? null, games: homeExtStats.goalsGames ?? 0 }, away: { goalsFor: awayExtStats.goalsFor ?? null, goalsAgainst: awayExtStats.goalsAgainst ?? null, games: awayExtStats.goalsGames ?? 0 } }
     );
 
     // Tichá evidencia tipov vyradených pre rozpor so stávkovkami – posiela sa na web
@@ -352,6 +353,7 @@ ipcMain.handle("tips:list", async () => {
 });
 
 ipcMain.handle("shadow:summary", async () => getShadowSummaryRemote());
+ipcMain.handle("clv:summary", async () => getClvSummaryRemote());
 ipcMain.handle("leads:list", async () => listLeadsRemote());
 ipcMain.handle("leads:delete", async (_e, chatId: string) => deleteLeadRemote(chatId));
 
