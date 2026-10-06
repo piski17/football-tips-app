@@ -12,6 +12,7 @@ import {
   getPlayerSeasonStats,
   getTeamPlayersWithStats,
   getFixtureLineupPlayerIds,
+  getFixtureMissingPlayers,
   getFixtureOdds,
   getRecentFormAnyCompetition,
   getHeadToHeadStats,
@@ -209,6 +210,7 @@ ipcMain.handle(
       getFixtureLineupPlayerIds(fixture.fixtureId),
       getFixtureOdds(fixture.fixtureId),
     ]);
+    const missingPlayers = await getFixtureMissingPlayers(fixture.fixtureId);
 
     // Štatistiky posledných vzájomných zápasov (rohy, karty…) – pri chybe sa jednoducho nepoužijú.
     const h2hStats = await getHeadToHeadStats(h2h, fixture.homeTeam.name).catch(() => []);
@@ -241,7 +243,9 @@ ipcMain.handle(
       },
       marketOdds,
       h2hStats,
-      { home: { goalsFor: homeExtStats.goalsFor ?? null, goalsAgainst: homeExtStats.goalsAgainst ?? null, games: homeExtStats.goalsGames ?? 0 }, away: { goalsFor: awayExtStats.goalsFor ?? null, goalsAgainst: awayExtStats.goalsAgainst ?? null, games: awayExtStats.goalsGames ?? 0 } }
+      { home: { goalsFor: homeExtStats.goalsFor ?? null, goalsAgainst: homeExtStats.goalsAgainst ?? null, games: homeExtStats.goalsGames ?? 0 }, away: { goalsFor: awayExtStats.goalsFor ?? null, goalsAgainst: awayExtStats.goalsAgainst ?? null, games: awayExtStats.goalsGames ?? 0 } },
+      false,
+      missingPlayers
     );
 
     // Tichá evidencia tipov vyradených pre rozpor so stávkovkami – posiela sa na web
