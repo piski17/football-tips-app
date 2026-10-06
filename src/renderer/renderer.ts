@@ -207,6 +207,14 @@ function tipOddsLabel(t: any) {
 }
 
 /** Riadok s kurzom a hodnotou pri tipe v detaile zápasu. */
+/** Odporúčaný tip s dôverou aspoň 70 % (STRONG_TIP_MIN_PROBABILITY v oddsMatcher.ts). */
+const STRONG_TIP_MIN_PROBABILITY = 70;
+function strongTipBadge(p: any) {
+  return typeof p === "number" && p >= STRONG_TIP_MIN_PROBABILITY
+    ? ' <span class="strong-tip" title="Dôvera 70 % a viac – v spätných testoch najspoľahlivejšie tipy">★ Silný tip</span>'
+    : "";
+}
+
 function betOddsHtml(bet: any) {
   if (typeof bet.odds === "number" && bet.odds > 1) {
     const ev = Math.round(((bet.expectedValue ?? 0) - 1) * 100);
@@ -659,7 +667,7 @@ function renderAnalysis(r: any) {
         translateNamesInText(bet.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name)
       )}</div>
         <div class="tip-meta">
-          ${idx === 0 ? "Najvyššia dôvera zo všetkých trhov · " : ""}${bet.probability.toFixed(0)} %${betOddsHtml(bet)}
+          ${idx === 0 ? "Najvyššia dôvera zo všetkých trhov · " : ""}${bet.probability.toFixed(0)} %${betOddsHtml(bet)}${strongTipBadge(bet.probability)}
         </div>
         ${
           bet.explanation
@@ -1496,7 +1504,7 @@ function renderTipsList(tips: any[]) {
         <div class="tip-row ${rowClassFull}" data-row-id="${t.id}">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))} <span class="muted small">(${date})</span></div>
-            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)} % · kurz ${tipOddsLabel(t)}${overrideBadge(t)}${manualBadge(t)}${editedBadge(t)}</div>
+            <div class="tip-row-market">${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)} % · kurz ${tipOddsLabel(t)}${t.legs && t.legs.length ? "" : strongTipBadge(t.probability)}${overrideBadge(t)}${manualBadge(t)}${editedBadge(t)}</div>
           </div>
           ${resultIconHtml}
           ${
@@ -1927,7 +1935,7 @@ function renderDayTips() {
           <div class="day-tip-bet">${escapeHtml(bet.market)}: <strong>${escapeHtml(
             translateNamesInText(bet.selection, f.homeTeam.name, f.awayTeam.name)
           )}</strong></div>
-          <div class="muted small">Dôvera <strong>${bet.probability.toFixed(0)} %</strong>${betOddsHtml(bet)}</div>
+          <div class="muted small">Dôvera <strong>${bet.probability.toFixed(0)} %</strong>${betOddsHtml(bet)}${strongTipBadge(bet.probability)}</div>
           ${warn}
         </div>
         <div class="day-tip-actions">

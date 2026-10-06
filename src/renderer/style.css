@@ -1584,3 +1584,6 @@ h1, h2, h3, h4,
 .live-score { font-size: 19px; font-weight: 600; }
 .fixture-row .time strong { font-size: 20px; font-weight: 600; }
 .day-tip-rank { font-size: 27px; font-weight: 600; }
+
+/* ★ Silný tip – odporúčaný tip s dôverou 70 % a viac */
+.strong-tip { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.85em; font-weight: 600; color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); background: color-mix(in srgb, var(--gold) 12%, transparent); white-space: nowrap; }
