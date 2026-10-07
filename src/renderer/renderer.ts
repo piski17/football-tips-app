@@ -698,14 +698,20 @@ function renderAnalysis(r: any) {
         }.</div>`
       : "";
 
-  // Tipy v pásme, ktoré vypadli pre nízky skutočný kurz (bez hodnoty) - len na informáciu.
+  // Vyradené tipy: z každého trhu len jedna hranica (s najvyššou dôverou), schované pod rozbaľovačom.
+  const lowValueShown: { b: any; i: number }[] = [];
+  (r.lowValueBets || []).forEach((b: any, i: number) => {
+    const k = lowValueShown.findIndex((x) => x.b.market === b.market);
+    if (k < 0) lowValueShown.push({ b, i });
+    else if (b.probability > lowValueShown[k].b.probability) lowValueShown[k] = { b, i };
+  });
   const lowValueHtml =
-    (r.lowValueBets || []).length > 0
-      ? `<div class="low-value-list">
-          <div class="muted small" style="margin-bottom:6px;">Vyradené po kontrole kurzu (môžeš ich pridať na vlastnú zodpovednosť):</div>
-          ${(r.lowValueBets || [])
+    lowValueShown.length > 0
+      ? `<details class="low-value-list">
+          <summary class="muted small">Vyradené pre nízky kurz (${lowValueShown.length})</summary>
+          ${lowValueShown
             .map(
-              (b: any, i: number) => `
+              ({ b, i }) => `
             <div class="low-value-row">
               <span class="muted small">${escapeHtml(b.market)}: ${escapeHtml(
                 translateNamesInText(b.selection, r.fixture.homeTeam.name, r.fixture.awayTeam.name)
@@ -717,7 +723,7 @@ function renderAnalysis(r: any) {
             </div>`
             )
             .join("")}
-        </div>`
+        </details>`
       : "";
 
   analysisColumnEl.innerHTML = `
