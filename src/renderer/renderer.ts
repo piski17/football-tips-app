@@ -211,7 +211,7 @@ function tipOddsLabel(t: any) {
 const STRONG_TIP_MIN_PROBABILITY = 70;
 function strongTipBadge(p: any) {
   return typeof p === "number" && p >= STRONG_TIP_MIN_PROBABILITY
-    ? ' <span class="strong-tip" title="Dôvera 70 % a viac – v spätných testoch najspoľahlivejšie tipy">★ Silný tip</span>'
+    ? ' <span class="strong-tip" title="Dôvera 70 % a viac. Vo VIP kanáli dostane hviezdičku len jeden tip dňa – ten s najvyššou dôverou.">★ 70 %+</span>'
     : "";
 }
 
