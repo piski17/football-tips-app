@@ -309,6 +309,8 @@ interface FootballApi {
   deleteSubscriber(id: string): Promise<boolean>;
   sendNoTipToday(target: string): Promise<boolean>;
   sendWeeklyReport(target: string): Promise<boolean>;
+  getMonthlyReport(month: string | null): Promise<any>;
+  sendMonthlyReport(month: string, target: string): Promise<boolean>;
   sendDailyResults(target: string, day: string, force: boolean): Promise<any>;
   sendTipResult(id: string, target: string): Promise<boolean>;
   listTips(): Promise<any[]>;
@@ -1803,6 +1805,99 @@ weeklyReportBtn.addEventListener("click", async () => {
     weeklyReportBtn.disabled = false;
   }
 });
+
+// ---- Mesačný súhrn (tipy daného mesiaca, s odoslaním do Telegramu) ----
+function fmtMonthNum(n: number, digits: number): string {
+  return Number(n).toFixed(digits).replace(".", ",");
+}
+function signedMonthNum(n: number, digits: number): string {
+  return (n > 0 ? "+" : n < 0 ? "−" : "") + fmtMonthNum(Math.abs(n), digits);
+}
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+async function openMonthlyReport(startMonth?: string): Promise<void> {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal modal-large monthly-modal">
+      <div class="monthly-head">
+        <button class="btn-ghost btn-mini" data-m="-1" aria-label="Predošlý mesiac">‹</button>
+        <h3 class="monthly-title">Mesačný súhrn</h3>
+        <button class="btn-ghost btn-mini" data-m="1" aria-label="Ďalší mesiac">›</button>
+      </div>
+      <div class="monthly-body"><p class="empty-state">Načítavam…</p></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" data-close>Zavrieť</button>
+        <button class="btn-primary" data-send>Odoslať do Telegramu</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const body = overlay.querySelector(".monthly-body") as HTMLElement;
+  const title = overlay.querySelector(".monthly-title") as HTMLElement;
+  let current: string | null = startMonth || null;
+  let loaded: any = null;
+
+  async function load() {
+    body.innerHTML = `<p class="empty-state">Načítavam…</p>`;
+    try {
+      const r: any = await window.api.getMonthlyReport(current);
+      loaded = r;
+      current = r.month;
+      title.textContent = `Mesačný súhrn – ${r.label}`;
+      if (!r.resolved) {
+        body.innerHTML = `<p class="empty-state">V tomto mesiaci zatiaľ nie sú vyhodnotené žiadne tipy.${r.pending ? ` Ešte sa hrá: ${r.pending}.` : ""}</p>`;
+        return;
+      }
+      const card = (label: string, value: string | number, cls?: string) => `<div class="monthly-stat"><span>${label}</span><b class="${cls || ""}">${value}</b></div>`;
+      body.innerHTML = `
+        <div class="monthly-grid">
+          ${card("Úspešnosť", `${fmtMonthNum(r.rate, 0)} %`)}
+          ${card("Vyšlo / nevyšlo", `<span class="won">${r.won}</span> / <span class="lost">${r.lost}</span>`)}
+          ${r.profit != null ? card("Zisk", `${signedMonthNum(r.profit, 1)} j.`, r.profit >= 0 ? "won" : "lost") : ""}
+          ${r.roi != null ? card("ROI", `${signedMonthNum(r.roi, 0)} %`, r.roi >= 0 ? "won" : "lost") : ""}
+          ${r.avgOdds != null ? card("Priemerný kurz", fmtMonthNum(r.avgOdds, 2)) : ""}
+          ${r.bestStreak >= 2 ? card("Séria výhier", r.bestStreak) : ""}
+        </div>
+        <p class="muted small">${r.voided ? `Vrátené: ${r.voided}. ` : ""}${r.pending ? `Ešte sa hrá: ${r.pending}. ` : ""}${r.bestDay ? `Najlepší deň: ${r.bestDay.day} (${signedMonthNum(r.bestDay.profit, 1)} j.). ` : ""}${r.oddsCount < r.resolved ? `Zisk je z ${r.oddsCount} tipov so známym kurzom.` : ""}</p>
+        <div class="market-breakdown-title">Podľa trhov</div>
+        ${r.byMarket.map((b: any) => `
+          <div class="market-breakdown-row">
+            <div class="market-breakdown-label"><span>${escapeHtml(b.market)}</span><span>${b.won} z ${b.total} · ${fmtMonthNum(b.rate, 0)} %</span></div>
+            <div class="market-breakdown-bar"><div class="market-breakdown-bar-fill" style="width:${Math.round(b.rate)}%"></div></div>
+          </div>`).join("")}`;
+    } catch (err: any) {
+      body.innerHTML = `<p class="empty-state">Súhrn sa nepodarilo načítať: ${escapeHtml(err.message || String(err))}</p>`;
+    }
+  }
+
+  overlay.querySelectorAll<HTMLElement>("[data-m]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (!current) return;
+      current = shiftMonth(current, Number(b.dataset.m));
+      load();
+    })
+  );
+  overlay.querySelector("[data-close]")!.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector("[data-send]")!.addEventListener("click", async () => {
+    if (!loaded) return;
+    const target = await askTelegramTarget();
+    if (!target) return;
+    try {
+      await window.api.sendMonthlyReport(loaded.month, target);
+      showToast("Mesačný súhrn odoslaný.");
+    } catch (err: any) {
+      showToast(`Odoslanie zlyhalo: ${err?.message ?? String(err)}`);
+    }
+  });
+  load();
+}
+
+document.getElementById("monthlyReportBtn")!.addEventListener("click", () => openMonthlyReport());
 
 // ---- Denné vyhodnotenie (všetky tipy a tikety dňa naraz do Telegramu) ----
 /** Deň, za ktorý sa posiela vyhodnotenie: dnes, po polnoci (do 6:00) ešte včerajšok. */

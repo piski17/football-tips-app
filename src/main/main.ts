@@ -34,6 +34,8 @@ import {
   deleteSubscriberRemote,
   sendNoTipTodayRemote,
   sendWeeklyReportRemote,
+  getMonthlyReportRemote,
+  sendMonthlyReportRemote,
   sendDailyResultsRemote,
   sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, getClvSummaryRemote, listLeadsRemote, deleteLeadRemote } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
@@ -343,6 +345,15 @@ ipcMain.handle(
 
 ipcMain.handle("telegram:weeklyReport", async (_e, target: "premium" | "vip" | "both") => {
   await sendWeeklyReportRemote(target);
+  return true;
+});
+
+ipcMain.handle("reports:monthly", async (_e, month: string | null) => {
+  return getMonthlyReportRemote(month);
+});
+
+ipcMain.handle("telegram:monthlyReport", async (_e, month: string, target: "premium" | "vip" | "both") => {
+  await sendMonthlyReportRemote(month, target);
   return true;
 });
 
