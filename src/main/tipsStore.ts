@@ -147,7 +147,7 @@ export async function checkResultsRemote(): Promise<SavedTip[] | null> {
  */
 export async function sendTipToTelegram(
   id: string,
-  target: "premium" | "vip" | "both",
+  target: "premium" | "vip" | "both" | "free",
   asMatchOfWeek?: boolean
 ): Promise<void> {
   if (!hasWebSync()) {
@@ -188,13 +188,13 @@ export async function deleteSubscriberRemote(id: string): Promise<void> {
   await webClient().delete(`/api/subscribers/${id}`);
 }
 
-export async function sendNoTipTodayRemote(target: "premium" | "vip" | "both"): Promise<void> {
+export async function sendNoTipTodayRemote(target: "premium" | "vip" | "both" | "free"): Promise<void> {
   requireWebSync();
   await webClient().post("/api/telegram/no-tip-today", { target });
 }
 
 export async function sendDailyResultsRemote(
-  target: "premium" | "vip" | "both",
+  target: "premium" | "vip" | "both" | "free",
   day: string,
   force: boolean
 ): Promise<any> {
@@ -207,7 +207,7 @@ export async function sendDailyResultsRemote(
   }
 }
 
-export async function sendWeeklyReportRemote(target: "premium" | "vip" | "both"): Promise<void> {
+export async function sendWeeklyReportRemote(target: "premium" | "vip" | "both" | "free"): Promise<void> {
   requireWebSync();
   await webClient().post("/api/telegram/weekly-report", { target });
 }
@@ -222,7 +222,7 @@ export async function getMonthlyReportRemote(month: string | null): Promise<any>
   }
 }
 
-export async function sendMonthlyReportRemote(month: string, target: "premium" | "vip" | "both"): Promise<void> {
+export async function sendMonthlyReportRemote(month: string, target: "premium" | "vip" | "both" | "free"): Promise<void> {
   requireWebSync();
   try {
     await webClient().post("/api/telegram/monthly-report", { month, target });
@@ -231,7 +231,7 @@ export async function sendMonthlyReportRemote(month: string, target: "premium" |
   }
 }
 
-export async function sendTipResultRemote(id: string, target: "premium" | "vip" | "both"): Promise<void> {
+export async function sendTipResultRemote(id: string, target: "premium" | "vip" | "both" | "free"): Promise<void> {
   requireWebSync();
   await webClient().post(`/api/tips/${id}/telegram-result`, { target });
 }

@@ -306,7 +306,7 @@ ipcMain.handle("tips:save", async (_e, tip: SavedTip) => {
 
 ipcMain.handle(
   "tips:sendToTelegram",
-  async (_e, id: string, target: "premium" | "vip" | "both", asMatchOfWeek?: boolean) => {
+  async (_e, id: string, target: "premium" | "vip" | "both" | "free", asMatchOfWeek?: boolean) => {
     await sendTipToTelegram(id, target, asMatchOfWeek);
     return true;
   }
@@ -331,19 +331,19 @@ ipcMain.handle("subscribers:delete", async (_e, id: string) => {
   return true;
 });
 
-ipcMain.handle("telegram:noTipToday", async (_e, target: "premium" | "vip" | "both") => {
+ipcMain.handle("telegram:noTipToday", async (_e, target: "premium" | "vip" | "both" | "free") => {
   await sendNoTipTodayRemote(target);
   return true;
 });
 
 ipcMain.handle(
   "telegram:dailyResults",
-  async (_e, target: "premium" | "vip" | "both", day: string, force: boolean) => {
+  async (_e, target: "premium" | "vip" | "both" | "free", day: string, force: boolean) => {
     return await sendDailyResultsRemote(target, day, force);
   }
 );
 
-ipcMain.handle("telegram:weeklyReport", async (_e, target: "premium" | "vip" | "both") => {
+ipcMain.handle("telegram:weeklyReport", async (_e, target: "premium" | "vip" | "both" | "free") => {
   await sendWeeklyReportRemote(target);
   return true;
 });
@@ -352,12 +352,12 @@ ipcMain.handle("reports:monthly", async (_e, month: string | null) => {
   return getMonthlyReportRemote(month);
 });
 
-ipcMain.handle("telegram:monthlyReport", async (_e, month: string, target: "premium" | "vip" | "both") => {
+ipcMain.handle("telegram:monthlyReport", async (_e, month: string, target: "premium" | "vip" | "both" | "free") => {
   await sendMonthlyReportRemote(month, target);
   return true;
 });
 
-ipcMain.handle("telegram:tipResult", async (_e, id: string, target: "premium" | "vip" | "both") => {
+ipcMain.handle("telegram:tipResult", async (_e, id: string, target: "premium" | "vip" | "both" | "free") => {
   await sendTipResultRemote(id, target);
   return true;
 });
