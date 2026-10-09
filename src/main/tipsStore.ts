@@ -153,7 +153,7 @@ export async function sendTipToTelegram(
   if (!hasWebSync()) {
     throw new Error("Odosielanie do Telegramu funguje len pri zapnutej synchronizácii s webovou appkou.");
   }
-  await webClient().post(`/api/tips/${id}/telegram`, { target, asMatchOfWeek });
+  await webClient().post(`/api/tips/${id}/telegram`, { target, asStrongOfDay: !!asMatchOfWeek });
 }
 
 /**
