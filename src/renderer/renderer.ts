@@ -1645,7 +1645,7 @@ function renderSubscribersList(subs: any[]) {
   subscribersListEl.innerHTML = subs
     .map((s) => {
       const status = subscriberStatus(s);
-      const tierLabel = s.tier === "group" ? "INSIDER SEZÓNA" : "INSIDER 1 / 3 MESIACE";
+      const tierLabel = s.tier === "group" ? "PLATINUM SEZÓNA" : "PLATINUM 1 / 3 MESIACE";
       const dueDate = new Date(s.nextPaymentDue).toLocaleDateString("sk-SK");
       return `
         <div class="tip-row">
@@ -1704,7 +1704,7 @@ addSubscriberBtn.addEventListener("click", async () => {
   }
   const tier = subTierSelect.value;
   const priceEur = tier === "group" ? 299 : 49;
-  // Insider 1 mesiac, alebo Insider celá sezóna do 31. 5. 2027 (3 mesiace pridávaj vo webovej appke).
+  // Platinum 1 mesiac, alebo Platinum celá sezóna do 31. 5. 2027 (3 mesiace pridávaj vo webovej appke).
   const nextPaymentDue = tier === "group" ? new Date("2027-05-31T23:59:00") : new Date();
   if (tier !== "group") nextPaymentDue.setDate(nextPaymentDue.getDate() + 30);
 
@@ -2427,7 +2427,7 @@ async function renderShadowSummary() {
 }
 
 // ---- Poradovník záujemcov z webu ----
-const LEAD_PLAN_LABEL: Record<string, string> = { start: "Insider 1 mesiac", seria: "Insider 3 mesiace", sampion: "Insider sezóna", sampion_waitlist: "Insider sezóna (náhradník)", premium: "starý odkaz Premium", vip: "Insider sezóna (starý odkaz VIP)", vip_waitlist: "Insider sezóna (náhradník)", clenstvo: "nevybral" };
+const LEAD_PLAN_LABEL: Record<string, string> = { start: "Platinum 1 mesiac", seria: "Platinum 3 mesiace", sampion: "Platinum sezóna", sampion_waitlist: "Platinum sezóna (náhradník)", premium: "starý odkaz Premium", vip: "Platinum sezóna (starý odkaz VIP)", vip_waitlist: "Platinum sezóna (náhradník)", clenstvo: "nevybral" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
