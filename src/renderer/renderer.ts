@@ -1645,7 +1645,7 @@ function renderSubscribersList(subs: any[]) {
   subscribersListEl.innerHTML = subs
     .map((s) => {
       const status = subscriberStatus(s);
-      const tierLabel = s.tier === "group" ? "VIP" : "PREMIUM";
+      const tierLabel = s.tier === "group" ? "ŠAMPIÓN" : "ŠTART / SÉRIA";
       const dueDate = new Date(s.nextPaymentDue).toLocaleDateString("sk-SK");
       return `
         <div class="tip-row">
@@ -1703,9 +1703,10 @@ addSubscriberBtn.addEventListener("click", async () => {
     return;
   }
   const tier = subTierSelect.value;
-  const priceEur = tier === "group" ? 59 : 29;
-  const nextPaymentDue = new Date();
-  nextPaymentDue.setDate(nextPaymentDue.getDate() + 30);
+  const priceEur = tier === "group" ? 249 : 49;
+  // Štart = 1 mesiac, Šampión = celá sezóna do 31. 5. 2027 (Sériu na 3 mesiace pridávaj vo webovej appke).
+  const nextPaymentDue = tier === "group" ? new Date("2027-05-31T23:59:00") : new Date();
+  if (tier !== "group") nextPaymentDue.setDate(nextPaymentDue.getDate() + 30);
 
   const subscriber = {
     id: `sub-${Date.now()}`,
@@ -2426,7 +2427,7 @@ async function renderShadowSummary() {
 }
 
 // ---- Poradovník záujemcov z webu ----
-const LEAD_PLAN_LABEL: Record<string, string> = { premium: "Premium", vip: "VIP", vip_waitlist: "VIP (náhradník)", clenstvo: "nevybral" };
+const LEAD_PLAN_LABEL: Record<string, string> = { start: "Štart", seria: "Séria", sampion: "Šampión", sampion_waitlist: "Šampión (náhradník)", premium: "starý odkaz Premium", vip: "Šampión (starý odkaz VIP)", vip_waitlist: "Šampión (náhradník)", clenstvo: "nevybral" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
@@ -2457,7 +2458,7 @@ async function renderLeads() {
         (document.getElementById("subName") as HTMLInputElement).value = l.name || "";
         (document.getElementById("subContact") as HTMLInputElement).value = l.username ? "@" + l.username : "";
         (document.getElementById("subTelegramChatId") as HTMLInputElement).value = l.chatId;
-        (document.getElementById("subTier") as HTMLSelectElement).value = l.plan === "vip" || l.plan === "vip_waitlist" ? "group" : "individual";
+        (document.getElementById("subTier") as HTMLSelectElement).value = ["sampion", "sampion_waitlist", "vip", "vip_waitlist"].includes(l.plan) ? "group" : "individual";
         document.getElementById("subName")?.scrollIntoView({ behavior: "smooth", block: "center" });
         showToast("Údaje sú vyplnené – skontroluj ich a klikni na Pridať.");
       };
