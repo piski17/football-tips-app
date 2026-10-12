@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld("api", {
   getClvSummary: () => ipcRenderer.invoke("clv:summary"),
   listLeads: () => ipcRenderer.invoke("leads:list"),
   deleteLead: (chatId: string) => ipcRenderer.invoke("leads:delete", chatId),
+  salesOpen: () => ipcRenderer.invoke("leads:salesOpen"),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),
   clearAllTips: () => ipcRenderer.invoke("tips:clearAll"),
 

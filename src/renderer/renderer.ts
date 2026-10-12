@@ -321,6 +321,7 @@ interface FootballApi {
   getClvSummary(): Promise<any>;
   listLeads(): Promise<any[]>;
   deleteLead(chatId: string): Promise<void>;
+  salesOpen(): Promise<{ sent: number; skipped: number; failed: number }>;
   checkTipResults(): Promise<any[]>;
   clearAllTips(): Promise<boolean>;
   getWebSyncSettings(): Promise<{ url: string; user: string; password: string }>;
@@ -2423,6 +2424,20 @@ async function renderShadowSummary() {
 }
 
 // ---- Poradovník záujemcov z webu ----
+document.addEventListener("click", async (e) => {
+  const btn = (e.target as HTMLElement).closest?.("#salesOpenBtn") as HTMLButtonElement | null;
+  if (!btn) return;
+  if (!window.confirm("Poslať všetkým z poradovníka správu, že predaj je otvorený? Každý ju dostane len raz.")) return;
+  btn.disabled = true;
+  try {
+    const r = await window.api.salesOpen();
+    showToast(`Správa odišla ${r.sent} ľuďom.` + (r.failed ? ` Neodišla: ${r.failed}.` : "") + (r.skipped ? ` Preskočení (už dostali, sú členmi alebo sú z formulára): ${r.skipped}.` : ""));
+  } catch (err: any) {
+    showToast(String(err?.message || "Správu sa nepodarilo poslať.").replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+  }
+  btn.disabled = false;
+  renderLeads();
+});
 const LEAD_PLAN_LABEL: Record<string, string> = { start: "Platinum 1 mesiac", seria: "Platinum 3 mesiace", sampion: "Platinum sezóna", sampion_waitlist: "Platinum sezóna (náhradník)", premium: "starý odkaz Premium", vip: "Platinum sezóna (starý odkaz VIP)", vip_waitlist: "Platinum sezóna (náhradník)", clenstvo: "nevybral" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
@@ -2439,7 +2454,7 @@ async function renderLeads() {
         const date = isNaN(d.getTime()) ? "" : `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`;
         return `<div class="tip-row lead-row">
           <div class="lead-main"><strong>${i + 1}. ${escapeHtml(l.name || "Neznámy")}</strong>${l.username ? ` <span class="muted">@${escapeHtml(l.username)}</span>` : ""}
-            <div class="muted small">${escapeHtml(LEAD_PLAN_LABEL[l.plan] || l.plan)} · zapísaný ${date} · ID ${escapeHtml(l.chatId)}</div></div>
+            <div class="muted small">${l.paidAt ? "✅ zaplatil · " : l.salesMsgAt ? "✉️ dostal správu o predaji · " : ""}${escapeHtml(LEAD_PLAN_LABEL[l.plan] || l.plan)} · zapísaný ${date} · ID ${escapeHtml(l.chatId)}</div></div>
           <div class="lead-actions">
             <a class="btn-ghost btn-mini" href="tg://user?id=${encodeURIComponent(l.chatId)}">Otvoriť chat</a>
             <button class="btn-ghost btn-mini" data-lead-add="${escapeHtml(l.chatId)}">Pridať ako predplatiteľa</button>

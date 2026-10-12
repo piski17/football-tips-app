@@ -276,6 +276,15 @@ export async function listLeadsRemote(): Promise<any[]> {
   if (!hasWebSync()) return [];
   return (await webClient().get("/api/leads")).data ?? [];
 }
+/** „Otvoriť predaj": bot pošle každému z poradovníka správu s tlačidlami na zaplatenie. */
+export async function salesOpenRemote(): Promise<{ sent: number; skipped: number; failed: number }> {
+  if (!hasWebSync()) throw new Error("Najprv zapni synchronizáciu s webom (Nastavenia).");
+  try {
+    return (await webClient().post("/api/leads/sales-open")).data;
+  } catch (err: any) {
+    throw new Error(err?.response?.data?.error || err?.message || "Správu sa nepodarilo poslať.");
+  }
+}
 export async function deleteLeadRemote(chatId: string): Promise<void> {
   if (!hasWebSync()) return;
   await webClient().delete(`/api/leads/${encodeURIComponent(chatId)}`);
