@@ -290,9 +290,10 @@ export async function listPaymentsRemote(): Promise<any[]> {
   if (!hasWebSync()) return [];
   return (await webClient().get("/api/payments")).data ?? [];
 }
-export async function paymentActionRemote(token: string, action: "confirm" | "cancel"): Promise<any> {
+export async function paymentActionRemote(token: string, action: "confirm" | "cancel" | "delete"): Promise<any> {
   if (!hasWebSync()) throw new Error("Najprv zapni synchronizáciu s webom (Nastavenia).");
   try {
+    if (action === "delete") return (await webClient().delete(`/api/payments/${encodeURIComponent(token)}`)).data;
     return (await webClient().post(`/api/payments/${encodeURIComponent(token)}/${action}`)).data;
   } catch (err: any) {
     throw new Error(err?.response?.data?.error || err?.message || "Nepodarilo sa.");

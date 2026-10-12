@@ -323,7 +323,7 @@ interface FootballApi {
   deleteLead(chatId: string): Promise<void>;
   salesOpen(): Promise<{ sent: number; skipped: number; failed: number }>;
   listPayments(): Promise<any[]>;
-  paymentAction(token: string, action: "confirm" | "cancel"): Promise<any>;
+  paymentAction(token: string, action: "confirm" | "cancel" | "delete"): Promise<any>;
   checkTipResults(): Promise<any[]>;
   clearAllTips(): Promise<boolean>;
   getWebSyncSettings(): Promise<{ url: string; user: string; password: string }>;
@@ -2457,10 +2457,11 @@ async function renderPayments() {
     return `<div class="tip-row lead-row">
       <div class="lead-main"><strong>VS ${escapeHtml(p.vs || "")} · ${p.priceEur} €</strong> · ${escapeHtml(p.termName || "")} · ${who}
         <div class="muted small">${state}</div></div>
-      ${p.status === "pending" ? `<div class="lead-actions">
+      <div class="lead-actions">${p.status === "pending" ? `
         <button class="btn-primary btn-mini" data-pay-ok="${escapeHtml(p.token)}">Potvrdiť</button>
-        <button class="btn-ghost btn-mini" data-pay-no="${escapeHtml(p.token)}">Zrušiť</button>
-      </div>` : ""}</div>`;
+        <button class="btn-ghost btn-mini" data-pay-no="${escapeHtml(p.token)}">Zrušiť</button>` : `
+        <button class="btn-ghost btn-mini" data-pay-del="${escapeHtml(p.token)}">Odstrániť</button>`}
+      </div></div>`;
   };
   el.innerHTML = pending.map(rowHtml).join("") + (done.length ? `<p class="muted small" style="margin:10px 0 4px;">Vybavené</p>` + done.map(rowHtml).join("") : "");
   el.querySelectorAll<HTMLButtonElement>("[data-pay-ok]").forEach((b) => {
@@ -2475,6 +2476,18 @@ async function renderPayments() {
         showToast(cleanIpcError(err, "Potvrdenie zlyhalo."));
       }
       void openSubscribers();
+    };
+  });
+  el.querySelectorAll<HTMLButtonElement>("[data-pay-del]").forEach((b) => {
+    b.onclick = async () => {
+      if (!window.confirm("Odstrániť tento záznam o platbe? Člen v predplatiteľoch ostane.")) return;
+      b.disabled = true;
+      try {
+        await window.api.paymentAction(String(b.dataset.payDel), "delete");
+      } catch (err: any) {
+        showToast(cleanIpcError(err, "Odstránenie zlyhalo."));
+      }
+      void renderPayments();
     };
   });
   el.querySelectorAll<HTMLButtonElement>("[data-pay-no]").forEach((b) => {

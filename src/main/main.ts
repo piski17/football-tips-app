@@ -373,7 +373,7 @@ ipcMain.handle("leads:list", async () => listLeadsRemote());
 ipcMain.handle("leads:delete", async (_e, chatId: string) => deleteLeadRemote(chatId));
 ipcMain.handle("leads:salesOpen", async () => salesOpenRemote());
 ipcMain.handle("payments:list", async () => listPaymentsRemote());
-ipcMain.handle("payments:action", async (_e, token: string, action: "confirm" | "cancel") => paymentActionRemote(token, action));
+ipcMain.handle("payments:action", async (_e, token: string, action: "confirm" | "cancel" | "delete") => paymentActionRemote(token, action));
 
 ipcMain.handle("tips:edit", async (_e, id: string, edit: any) => {
   await editTip(id, edit);
