@@ -322,6 +322,8 @@ interface FootballApi {
   listLeads(): Promise<any[]>;
   deleteLead(chatId: string): Promise<void>;
   salesOpen(): Promise<{ sent: number; skipped: number; failed: number }>;
+  listPayments(): Promise<any[]>;
+  paymentAction(token: string, action: "confirm" | "cancel"): Promise<any>;
   checkTipResults(): Promise<any[]>;
   clearAllTips(): Promise<boolean>;
   getWebSyncSettings(): Promise<{ url: string; user: string; password: string }>;
@@ -1610,6 +1612,7 @@ function subscriberStatus(sub: any): { label: string; cls: string } {
 
 async function openSubscribers() {
   void renderLeads();
+  void renderPayments();
   subscribersModal.hidden = false;
   subscribersListEl.innerHTML = skeletonHtml(2);
   try {
@@ -2421,6 +2424,71 @@ async function renderShadowSummary() {
   } catch {
     el.textContent = "";
   }
+}
+
+// ---- Platby prevodom (QR kód) – potvrdenie ----
+function fmtDayTime(iso?: string): string {
+  const d = new Date(iso ?? "");
+  return isNaN(d.getTime()) ? "" : `${d.getDate()}. ${d.getMonth() + 1}. ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+const cleanIpcError = (err: any, fallback: string) => String(err?.message || fallback).replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+async function renderPayments() {
+  const box = document.getElementById("paymentsBox");
+  const el = document.getElementById("paymentsList");
+  if (!box || !el) return;
+  let list: any[] = [];
+  try {
+    list = await window.api.listPayments();
+  } catch {
+    box.hidden = true;
+    return;
+  }
+  // Čakajúce: najprv tí, čo dali vedieť „Zaplatil som"; vybavené len pre prehľad.
+  const pending = list.filter((p) => p.status === "pending").sort((a, b) => (b.claimedAt ? 1 : 0) - (a.claimedAt ? 1 : 0));
+  const done = list.filter((p) => p.status !== "pending").slice(0, 10);
+  box.hidden = !pending.length && !done.length;
+  const rowHtml = (p: any) => {
+    const who = p.name ? `${escapeHtml(p.name)}${p.username ? ` <span class="muted">@${escapeHtml(p.username)}</span>` : ""}` : `<span class="muted">zatiaľ bez mena</span>`;
+    const state =
+      p.status === "pending" ? (p.claimedAt ? `🏦 dal vedieť, že zaplatil · ${fmtDayTime(p.claimedAt)}` : `otvoril platbu · ${fmtDayTime(p.createdAt)} · ešte nedal vedieť`)
+      : p.status === "cancelled" ? "✖ zrušené"
+      : p.status === "redeemed" ? `✅ potvrdené, pozvánka odoslaná · ${fmtDayTime(p.paidAt)}`
+      : `✅ potvrdené · čaká, kým klikne „Zaplatil som“`;
+    return `<div class="tip-row lead-row">
+      <div class="lead-main"><strong>VS ${escapeHtml(p.vs || "")} · ${p.priceEur} €</strong> · ${escapeHtml(p.termName || "")} · ${who}
+        <div class="muted small">${state}</div></div>
+      ${p.status === "pending" ? `<div class="lead-actions">
+        <button class="btn-primary btn-mini" data-pay-ok="${escapeHtml(p.token)}">Potvrdiť</button>
+        <button class="btn-ghost btn-mini" data-pay-no="${escapeHtml(p.token)}">Zrušiť</button>
+      </div>` : ""}</div>`;
+  };
+  el.innerHTML = pending.map(rowHtml).join("") + (done.length ? `<p class="muted small" style="margin:10px 0 4px;">Vybavené</p>` + done.map(rowHtml).join("") : "");
+  el.querySelectorAll<HTMLButtonElement>("[data-pay-ok]").forEach((b) => {
+    b.onclick = async () => {
+      const p = pending.find((x) => x.token === b.dataset.payOk);
+      if (!p || !window.confirm(`Prišla na účet platba ${p.priceEur} € s variabilným symbolom ${p.vs}?`)) return;
+      b.disabled = true;
+      try {
+        const r = await window.api.paymentAction(p.token, "confirm");
+        showToast(r?.invited ? "Potvrdené. Bot mu poslal pozvánku a člen je zapísaný." : "Potvrdené. Pozvánku dostane, keď na stránke platby klikne „Zaplatil som“.");
+      } catch (err: any) {
+        showToast(cleanIpcError(err, "Potvrdenie zlyhalo."));
+      }
+      void openSubscribers();
+    };
+  });
+  el.querySelectorAll<HTMLButtonElement>("[data-pay-no]").forEach((b) => {
+    b.onclick = async () => {
+      if (!window.confirm("Zrušiť túto čakajúcu platbu?")) return;
+      b.disabled = true;
+      try {
+        await window.api.paymentAction(String(b.dataset.payNo), "cancel");
+      } catch (err: any) {
+        showToast(cleanIpcError(err, "Zrušenie zlyhalo."));
+      }
+      void renderPayments();
+    };
+  });
 }
 
 // ---- Poradovník záujemcov z webu ----

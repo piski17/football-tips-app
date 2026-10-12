@@ -37,7 +37,7 @@ import {
   getMonthlyReportRemote,
   sendMonthlyReportRemote,
   sendDailyResultsRemote,
-  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, getClvSummaryRemote, listLeadsRemote, deleteLeadRemote, salesOpenRemote } from "./tipsStore";
+  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, getClvSummaryRemote, listLeadsRemote, deleteLeadRemote, salesOpenRemote, listPaymentsRemote, paymentActionRemote } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -372,6 +372,8 @@ ipcMain.handle("clv:summary", async () => getClvSummaryRemote());
 ipcMain.handle("leads:list", async () => listLeadsRemote());
 ipcMain.handle("leads:delete", async (_e, chatId: string) => deleteLeadRemote(chatId));
 ipcMain.handle("leads:salesOpen", async () => salesOpenRemote());
+ipcMain.handle("payments:list", async () => listPaymentsRemote());
+ipcMain.handle("payments:action", async (_e, token: string, action: "confirm" | "cancel") => paymentActionRemote(token, action));
 
 ipcMain.handle("tips:edit", async (_e, id: string, edit: any) => {
   await editTip(id, edit);
