@@ -37,7 +37,7 @@ import {
   getMonthlyReportRemote,
   sendMonthlyReportRemote,
   sendDailyResultsRemote,
-  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, getClvSummaryRemote, listLeadsRemote, deleteLeadRemote, salesOpenRemote, listPaymentsRemote, paymentActionRemote } from "./tipsStore";
+  sendTipResultRemote, archiveTip, editTip, recordShadowRemote, getShadowSummaryRemote, getClvSummaryRemote, listLeadsRemote, deleteLeadRemote, salesOpenRemote, listPaymentsRemote, paymentActionRemote, sendTipsToTelegramRemote } from "./tipsStore";
 import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSAGE } from "./tipEvaluator";
 
 // Top ligy dostupné s API-Football Pro plánom.
@@ -372,6 +372,7 @@ ipcMain.handle("clv:summary", async () => getClvSummaryRemote());
 ipcMain.handle("leads:list", async () => listLeadsRemote());
 ipcMain.handle("leads:delete", async (_e, chatId: string) => deleteLeadRemote(chatId));
 ipcMain.handle("leads:salesOpen", async () => salesOpenRemote());
+ipcMain.handle("tips:sendManyToTelegram", async (_e, ids: string[], target: "premium" | "vip" | "both" | "free") => sendTipsToTelegramRemote(ids, target));
 ipcMain.handle("payments:list", async () => listPaymentsRemote());
 ipcMain.handle("payments:action", async (_e, token: string, action: "confirm" | "cancel" | "delete") => paymentActionRemote(token, action));
 

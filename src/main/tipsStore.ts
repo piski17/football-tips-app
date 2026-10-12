@@ -156,6 +156,21 @@ export async function sendTipToTelegram(
   await webClient().post(`/api/tips/${id}/telegram`, { target, asStrongOfDay: !!asMatchOfWeek });
 }
 
+/** Pošle viac uložených tipov naraz (napr. všetky tipy dňa), jeden po druhom podľa času výkopu. */
+export async function sendTipsToTelegramRemote(
+  ids: string[],
+  target: "premium" | "vip" | "both" | "free"
+): Promise<{ sent: number; failed: number }> {
+  if (!hasWebSync()) {
+    throw new Error("Odosielanie do Telegramu funguje len pri zapnutej synchronizácii s webovou appkou.");
+  }
+  try {
+    return (await webClient().post("/api/telegram/send-tips", { ids, target }, { timeout: 120000 })).data;
+  } catch (err: any) {
+    throw new Error(err?.response?.data?.error || err?.message || "Odoslanie zlyhalo.");
+  }
+}
+
 /**
  * Správa predplatiteľov beží výhradne na webovom serveri (dáta sú v Upstash
  * Redis) - appka len preposiela požiadavky tam. Funguje len pri zapnutej

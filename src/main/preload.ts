@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld("api", {
   listLeads: () => ipcRenderer.invoke("leads:list"),
   deleteLead: (chatId: string) => ipcRenderer.invoke("leads:delete", chatId),
   salesOpen: () => ipcRenderer.invoke("leads:salesOpen"),
+  sendTipsToTelegram: (ids: string[], target: string) => ipcRenderer.invoke("tips:sendManyToTelegram", ids, target),
   listPayments: () => ipcRenderer.invoke("payments:list"),
   paymentAction: (token: string, action: "confirm" | "cancel" | "delete") => ipcRenderer.invoke("payments:action", token, action),
   checkTipResults: () => ipcRenderer.invoke("tips:checkResults"),

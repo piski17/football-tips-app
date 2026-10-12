@@ -322,6 +322,7 @@ interface FootballApi {
   listLeads(): Promise<any[]>;
   deleteLead(chatId: string): Promise<void>;
   salesOpen(): Promise<{ sent: number; skipped: number; failed: number }>;
+  sendTipsToTelegram(ids: string[], target: string): Promise<{ sent: number; failed: number }>;
   listPayments(): Promise<any[]>;
   paymentAction(token: string, action: "confirm" | "cancel" | "delete"): Promise<any>;
   checkTipResults(): Promise<any[]>;
@@ -2425,6 +2426,106 @@ async function renderShadowSummary() {
     el.textContent = "";
   }
 }
+
+// ---- Poslať tipy dňa naraz (z histórie do Telegramu) ----
+function tipDayKey(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Bratislava" }).format(d);
+}
+function tipTimeLabel(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Bratislava" });
+}
+function openSendDayTips(): void {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal modal-large">
+      <h3>Poslať tipy dňa do Telegramu</h3>
+      <label class="muted small" style="display:flex;align-items:center;gap:10px;margin:6px 0 12px;">Deň <input type="date" data-day></label>
+      <div data-list></div>
+      <p class="muted small" data-info style="margin:10px 0 0;"></p>
+      <div class="modal-actions" style="flex-wrap:wrap;">
+        <button class="btn-ghost" data-close>Zavrieť</button>
+        <button class="btn-primary" data-target="free">★ Poslať do FREE</button>
+        <button class="btn-primary" data-target="premium">◆ Poslať do PLATINUM</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const dayInput = overlay.querySelector("[data-day]") as HTMLInputElement;
+  const listEl = overlay.querySelector("[data-list]") as HTMLElement;
+  const infoEl = overlay.querySelector("[data-info]") as HTMLElement;
+  // Predvolene dnešok; ak dnes nič nečaká, najbližší deň s čakajúcimi tipmi.
+  const today = tipDayKey(new Date().toISOString());
+  const nextDays = currentHistoryTips
+    .filter((t: any) => t.status === "pending" && !t.archived)
+    .map((t: any) => tipDayKey(t.matchDate))
+    .filter((d: string) => d >= today)
+    .sort();
+  dayInput.value = nextDays.includes(today) || !nextDays.length ? today : nextDays[0];
+  let dayTips: any[] = [];
+
+  const selected = () => Array.from(listEl.querySelectorAll<HTMLInputElement>("input[type=checkbox]:checked")).map((c) => c.value);
+  const updateInfo = () => {
+    const n = selected().length;
+    infoEl.textContent = dayTips.length ? `Vybrané: ${n} z ${dayTips.length}. Pôjdu ako samostatné správy, zoradené podľa času výkopu.` : "";
+    overlay.querySelectorAll<HTMLButtonElement>("[data-target]").forEach((b) => (b.disabled = n === 0));
+  };
+  const render = () => {
+    dayTips = currentHistoryTips
+      .filter((t: any) => t.status === "pending" && !t.archived && tipDayKey(t.matchDate) === dayInput.value)
+      .sort((a: any, b: any) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+    if (!dayTips.length) {
+      listEl.innerHTML = `<p class="empty-state">V tento deň nie sú v histórii žiadne čakajúce tipy.</p>`;
+      updateInfo();
+      return;
+    }
+    listEl.innerHTML = dayTips
+      .map((t: any) => {
+        const sent = (t.telegramMessages || []).length > 0;
+        const title = t.legs && t.legs.length
+          ? `🎫 Tiket (${plural(t.legs.length, "tip", "tipy", "tipov")}) · ${fmtNum(t.probability, 1)} %`
+          : `${escapeHtml(translateTeamName(t.homeTeam))} — ${escapeHtml(translateTeamName(t.awayTeam))}`;
+        const sub = t.legs && t.legs.length
+          ? t.legs.map((l: any) => `${escapeHtml(translateTeamName(l.homeTeam))} — ${escapeHtml(translateTeamName(l.awayTeam))}`).join(" · ")
+          : `${escapeHtml(t.market)}: ${escapeHtml(translateNamesInText(t.selection, t.homeTeam, t.awayTeam))} · ${t.probability.toFixed(0)} %${typeof t.odds === "number" && t.odds > 1 ? ` · kurz ${fmtNum(t.odds, 2)}` : ""}`;
+        return `<label class="tip-row" style="cursor:pointer;gap:12px;align-items:flex-start;">
+          <input type="checkbox" value="${escapeHtml(t.id)}" ${sent ? "" : "checked"} style="margin-top:4px;">
+          <div class="tip-row-info">
+            <div class="tip-row-match">${tipTimeLabel(t.matchDate)} · ${title}${sent ? ` <span class="muted small">· už odoslaný</span>` : ""}</div>
+            <div class="tip-row-market">${sub}</div>
+          </div></label>`;
+      })
+      .join("");
+    listEl.querySelectorAll("input[type=checkbox]").forEach((c) => c.addEventListener("change", updateInfo));
+    updateInfo();
+  };
+  dayInput.addEventListener("change", render);
+  overlay.querySelector("[data-close]")!.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelectorAll<HTMLButtonElement>("[data-target]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      const ids = selected();
+      if (!ids.length) return;
+      const channel = btn.dataset.target === "free" ? "FREE" : "PLATINUM";
+      if (!window.confirm(`Poslať ${plural(ids.length, "tip", "tipy", "tipov")} do kanála ${channel}?`)) return;
+      overlay.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.disabled = true));
+      infoEl.textContent = "Posielam…";
+      try {
+        const r = await window.api.sendTipsToTelegram(ids, String(btn.dataset.target));
+        showToast(`Odoslané: ${r.sent}.` + (r.failed ? ` Neodišlo: ${r.failed}.` : ""));
+        overlay.remove();
+        window.api.listTips().then(renderTipsList).catch(() => {});
+      } catch (err: any) {
+        showToast(`Odoslanie zlyhalo: ${String(err?.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")}`);
+        overlay.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.disabled = false));
+        updateInfo();
+      }
+    })
+  );
+  render();
+}
+document.getElementById("sendDayTipsBtn")!.addEventListener("click", () => openSendDayTips());
 
 // ---- Platby prevodom (QR kód) – potvrdenie ----
 function fmtDayTime(iso?: string): string {
