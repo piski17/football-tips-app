@@ -1728,7 +1728,7 @@ addSubscriberBtn.addEventListener("click", async () => {
     return;
   }
   const tier = subTierSelect.value;
-  const priceEur = tier === "group" ? 239 : 49;
+  const priceEur = tier === "group" ? 219 : 49;
   // Platinum 1 mesiac, alebo Platinum 6 mesiacov (3 mesiace pridávaj vo webovej appke).
   // Jún a júl sa nepočítajú – členstvo sa cez leto pozastaví (rovnako ako na webe).
   const nextPaymentDue = memberEnd(new Date(), tier === "group" ? 6 : 1);
