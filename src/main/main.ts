@@ -53,6 +53,15 @@ const LEAGUE_PRESETS: LeaguePreset[] = [
 
 let mainWindow: BrowserWindow | null = null;
 
+/** Pôvod adresy (https://app.tipradar.eu) alebo null pri neplatnej adrese. */
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -68,43 +77,52 @@ function createWindow(): void {
     },
   });
 
+  // Mac appka zobrazuje priamo webovú appku (app.tipradar.eu), ak je nastavená
+  // synchronizácia s webom – je tak vždy rovnaká a aktuálna ako web. Bez nej
+  // ostáva pôvodné lokálne rozhranie (17. 10. 2026).
+  const web = hasWebSync() ? getWebSyncSettings() : null;
+  const webOrigin = web ? originOf(web.url) : null;
+
   // Externé odkazy (Telegram tg://, https://t.me…) otvoriť v systéme, nie v okne appky.
-
-
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-
-
     if (/^(https?:|tg:|mailto:)/.test(url)) void shell.openExternal(url);
-
-
     return { action: "deny" };
-
-
   });
-
-
   mainWindow.webContents.on("will-navigate", (e, url) => {
-
-
+    // Odkazy v rámci webovej appky ostávajú v okne, ostatné idú do prehliadača.
+    if (webOrigin && url.startsWith(webOrigin)) return;
     if (/^(https?:|tg:|mailto:)/.test(url)) {
-
-
       e.preventDefault();
-
-
       void shell.openExternal(url);
-
-
     }
-
-
   });
+
+  if (web && webOrigin) {
+    void mainWindow.loadURL(web.url);
+    mainWindow.on("closed", () => {
+      mainWindow = null;
+    });
+    return;
+  }
 
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
+
+// Heslo webovej appky (HTTP Basic Auth) – vyplní sa z nastavení synchronizácie.
+// Pri nesprávnom hesle to skúsi len raz, aby sa okno nezacyklilo.
+let loginAttempts = 0;
+app.on("login", (event, _webContents, _details, authInfo, callback) => {
+  const web = getWebSyncSettings();
+  if (!web.url || !web.user || loginAttempts >= 1) return;
+  const origin = originOf(web.url);
+  if (!origin || authInfo.host !== new URL(origin).hostname) return;
+  event.preventDefault();
+  loginAttempts++;
+  callback(web.user, web.password);
+});
 
 app.whenReady().then(() => {
   // Na macOS treba ikonu Docku nastaviť samostatne - BrowserWindow "icon"

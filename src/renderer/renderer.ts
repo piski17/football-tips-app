@@ -1697,6 +1697,30 @@ closeSubscribersBtn.addEventListener("click", () => {
   subscribersModal.hidden = true;
 });
 
+/** Koniec členstva na `months` mesiacov od `from`, bez letnej prestávky (jún a júl). */
+function memberEnd(from: Date, months: number): Date {
+  const start = new Date(from);
+  start.setHours(23, 59, 0, 0);
+  const calEnd = new Date(start);
+  const day = calEnd.getDate();
+  calEnd.setMonth(calEnd.getMonth() + months);
+  if (calEnd.getDate() < day) calEnd.setDate(0);
+  let remaining = calEnd.getTime() - start.getTime();
+  let cursor = start;
+  for (let guard = 0; guard < 20; guard++) {
+    const y = cursor.getFullYear();
+    const pauseStart = new Date(y, 5, 1).getTime(); // 1. 6.
+    const pauseEnd = new Date(y, 7, 1).getTime(); // 1. 8.
+    const t = cursor.getTime();
+    if (t >= pauseStart && t < pauseEnd) { cursor = new Date(pauseEnd); continue; }
+    const nextPause = t < pauseStart ? pauseStart : new Date(y + 1, 5, 1).getTime();
+    if (t + remaining <= nextPause) return new Date(t + remaining);
+    remaining -= nextPause - t;
+    cursor = new Date(nextPause);
+  }
+  return calEnd;
+}
+
 addSubscriberBtn.addEventListener("click", async () => {
   const name = subNameInput.value.trim();
   if (!name) {
@@ -1704,10 +1728,10 @@ addSubscriberBtn.addEventListener("click", async () => {
     return;
   }
   const tier = subTierSelect.value;
-  const priceEur = tier === "group" ? 299 : 49;
-  // Platinum 1 mesiac, alebo Platinum celá sezóna do 31. 5. 2027 (3 mesiace pridávaj vo webovej appke).
-  const nextPaymentDue = tier === "group" ? new Date("2027-05-31T23:59:00") : new Date();
-  if (tier !== "group") nextPaymentDue.setDate(nextPaymentDue.getDate() + 30);
+  const priceEur = tier === "group" ? 239 : 49;
+  // Platinum 1 mesiac, alebo Platinum 6 mesiacov (3 mesiace pridávaj vo webovej appke).
+  // Jún a júl sa nepočítajú – členstvo sa cez leto pozastaví (rovnako ako na webe).
+  const nextPaymentDue = memberEnd(new Date(), tier === "group" ? 6 : 1);
 
   const subscriber = {
     id: `sub-${Date.now()}`,
@@ -2620,7 +2644,7 @@ document.addEventListener("click", async (e) => {
   btn.disabled = false;
   renderLeads();
 });
-const LEAD_PLAN_LABEL: Record<string, string> = { start: "Platinum 1 mesiac", seria: "Platinum 3 mesiace", sampion: "Platinum sezóna", sampion_waitlist: "Platinum sezóna (náhradník)", premium: "starý odkaz Premium", vip: "Platinum sezóna (starý odkaz VIP)", vip_waitlist: "Platinum sezóna (náhradník)", clenstvo: "nevybral" };
+const LEAD_PLAN_LABEL: Record<string, string> = { start: "Platinum 1 mesiac", seria: "Platinum 3 mesiace", sampion: "Platinum 6 mesiacov", sampion_waitlist: "Platinum 6 mesiacov (náhradník)", premium: "starý odkaz Premium", vip: "Platinum 6 mesiacov (starý odkaz VIP)", vip_waitlist: "Platinum 6 mesiacov (náhradník)", clenstvo: "nevybral" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
