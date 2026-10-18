@@ -785,7 +785,7 @@ function renderAnalysis(r: any) {
             : "Zostava na tento zápas ešte nie je potvrdená (zvyčajne sa objaví cca hodinu pred výkopom) – počíta sa z celej súpisky."
         }
       </p>
-      ${bestScorerCard(r.bestScorer)}
+      ${bestScorerCard(r.bestScorer, r)}
     </div>
 
     <div class="disclaimer">
@@ -798,6 +798,7 @@ function renderAnalysis(r: any) {
   initSaveTipButton(r);
   wireTicketButtons(r);
   wireScorerSaveButtons(r);
+  wireScorerOddsCheck();
   if (matchHasStarted(r.fixture)) {
     document
       .querySelectorAll<HTMLButtonElement>(".save-best-bet-btn, .add-to-ticket-btn, .scorer-save-btn")
@@ -846,7 +847,7 @@ function teamStatCard(
   `;
 }
 
-function bestScorerCard(best: any): string {
+function bestScorerCard(best: any, r: any): string {
   if (!best) {
     return `
       <div class="stat-card">
@@ -868,6 +869,7 @@ function bestScorerCard(best: any): string {
         </div>
         <div class="best-bet-prob" style="margin-left:auto;">${prediction.probabilityToScore.toFixed(0)} %</div>
       </div>
+      ${scorerOddsCheckHtml(best, r)}
       <button
         class="tip-save-btn scorer-save-btn"
         style="margin-top:8px; width:100%;"
@@ -877,6 +879,69 @@ function bestScorerCard(best: any): string {
       >Uložiť tento tip</button>
     </div>
   `;
+}
+
+
+// ---- Strelec: oplatí sa / neoplatí sa ----
+// Stávkovky kurzy na strelcov cez API neposielajú, preto sa kurz zadá ručne.
+// Oplatí sa len keď: hráč je v potvrdenej zostave, má aspoň 8 zápasov,
+// pravdepodobnosť gólu je aspoň 35 % a kurz je vyšší ako 100 ÷ pravdepodobnosť.
+const SCORER_MIN_PROB = 35;
+const SCORER_MIN_APPS = 8;
+
+function scorerOddsCheckHtml(best: any, r: any): string {
+  const p = best.prediction;
+  const isHome = r && best.team === r.fixture.homeTeam.name;
+  const lineupOk = Boolean(r?.lineupConfirmed && (isHome ? r.lineupConfirmed.home : r.lineupConfirmed.away));
+  const minOdds = p.probabilityToScore > 0 ? 100 / p.probabilityToScore : 0;
+  const checks = [
+    { ok: lineupOk, text: lineupOk ? "Hráč je v potvrdenej zostave" : "Zostava ešte nie je potvrdená" },
+    { ok: p.appearances >= SCORER_MIN_APPS, text: `Odohrané zápasy: ${p.appearances} (treba aspoň ${SCORER_MIN_APPS})` },
+    { ok: p.probabilityToScore >= SCORER_MIN_PROB, text: `Pravdepodobnosť gólu: ${p.probabilityToScore.toFixed(0)} % (treba aspoň ${SCORER_MIN_PROB} %)` },
+  ];
+  const baseOk = checks.every((c) => c.ok);
+  return `
+    <div class="scorer-check" data-min-odds="${minOdds}" data-base-ok="${baseOk ? 1 : 0}" style="margin-top:12px; padding:12px 14px; border-radius:14px; border:1px solid rgba(217,192,138,.16); background:rgba(217,192,138,.05);">
+      <div class="stat-line"><span>Minimálny kurz, pri ktorom sa oplatí</span><strong>${minOdds ? fmtNum(minOdds, 2) : "–"}</strong></div>
+      <ul style="list-style:none; margin:8px 0 10px; padding:0; font-size:13px; line-height:1.6;">
+        ${checks.map((c) => `<li style="color:${c.ok ? "#7FBF9A" : "#C0707C"}">${c.ok ? "✓" : "✗"} ${escapeHtml(c.text)}</li>`).join("")}
+      </ul>
+      <label class="small muted" style="display:flex; align-items:center; gap:10px;">
+        Kurz v stávkovke
+        <input class="scorer-odds-input" type="text" inputmode="decimal" placeholder="napr. 2,80" style="width:110px; margin-left:auto;" />
+      </label>
+      <div class="scorer-verdict" style="margin-top:10px; font-weight:700; font-size:15px; color:#CFC6B6;">Zadaj kurz a appka ti povie, či sa oplatí.</div>
+    </div>
+  `;
+}
+
+function wireScorerOddsCheck() {
+  document.querySelectorAll<HTMLElement>(".scorer-check").forEach((box) => {
+    const input = box.querySelector<HTMLInputElement>(".scorer-odds-input");
+    const out = box.querySelector<HTMLElement>(".scorer-verdict");
+    if (!input || !out) return;
+    const minOdds = parseFloat(box.dataset.minOdds || "0");
+    const baseOk = box.dataset.baseOk === "1";
+    input.addEventListener("input", () => {
+      const odds = parseFloat(input.value.replace(",", "."));
+      if (!odds || odds <= 1) {
+        out.style.color = "#CFC6B6";
+        out.textContent = "Zadaj kurz a appka ti povie, či sa oplatí.";
+        return;
+      }
+      const valueOk = odds > minOdds;
+      if (valueOk && baseOk) {
+        out.style.color = "#7FBF9A";
+        out.textContent = `✓ Oplatí sa – kurz ${fmtNum(odds, 2)} je vyšší ako minimum ${fmtNum(minOdds, 2)}.`;
+      } else if (!valueOk) {
+        out.style.color = "#C0707C";
+        out.textContent = `✗ Neoplatí sa – kurz ${fmtNum(odds, 2)} je nižší ako minimum ${fmtNum(minOdds, 2)}.`;
+      } else {
+        out.style.color = "#C0707C";
+        out.textContent = `✗ Neoplatí sa – kurz je dobrý, ale nie sú splnené podmienky vyššie.`;
+      }
+    });
+  });
 }
 
 function clampPercent(v: number): number {
@@ -942,7 +1007,11 @@ function wireScorerSaveButtons(r: any) {
         status: "pending",
         playerId,
         playerName,
-      };
+      } as any;
+      // kurz zadaný pri kontrole „oplatí sa“ sa uloží spolu s tipom
+      const oddsInput = btn.closest(".stat-card")?.querySelector<HTMLInputElement>(".scorer-odds-input");
+      const enteredOdds = oddsInput ? parseFloat(oddsInput.value.replace(",", ".")) : NaN;
+      if (enteredOdds > 1) tip.odds = enteredOdds;
 
       btn.disabled = true;
       const originalText = btn.textContent;
