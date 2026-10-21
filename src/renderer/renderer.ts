@@ -769,8 +769,8 @@ function renderAnalysis(r: any) {
              ${(r.headToHead.matches || []).length > 5 ? `<button type="button" class="btn-ghost btn-mini h2h-toggle" data-more="${(r.headToHead.matches || []).length - 5}">+ Zobraziť ďalšie (${(r.headToHead.matches || []).length - 5})</button>` : ""}
              <p class="muted small" style="margin:8px 0 0;">${
                r.headToHead.usedInModel
-                 ? `Model započítal ${r.headToHead.usedInModel} ${r.headToHead.usedInModel >= 5 ? "najnovších zápasov" : "najnovšie zápasy"} za posledných 10 rokov (sivé nie).`
-                 : "Menej ako 3 vzájomné zápasy za posledných 10 rokov – do odhadu sa nezapočítali."
+                 ? `Model započítal ${r.headToHead.usedInModel} ${r.headToHead.usedInModel >= 5 ? "najnovších zápasov" : "najnovšie zápasy"} za posledných 5 rokov (sivé nie).`
+                 : "Menej ako 3 vzájomné zápasy za posledných 5 rokov – do odhadu sa nezapočítali."
              }</p>`
           : ""
       }
