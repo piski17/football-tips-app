@@ -1760,3 +1760,45 @@ details.low-value-list[open] > summary { margin-bottom: 6px; }
 /* Vzájomné zápasy – rozbaľovanie (9. 10. 2026) */
 .h2h-row[hidden] { display: none; }
 .h2h-toggle { margin-top: 10px; }
+
+/* ================================================================
+   Luxusný futbalový klub (21. 10. 2026) – rovnaký vzhľad ako tipradar.eu
+   a app.tipradar.eu: teplá tmavá, zlatá, Barlow, nadpisy veľkými písmenami,
+   zaoblené karty, tlačidlá ako pilulky, klubová hviezdička.
+   (Zámerne na konci, aby mala prednosť.)
+   ================================================================ */
+:root {
+  --bg: #120E0A; --bg-2: #18130E;
+  --surface: #1D1711; --surface-alt: #241C15;
+  --border: rgba(217, 192, 138, 0.22); --line: rgba(217, 192, 138, 0.36);
+  --accent: #D9C08A; --accent-strong: #F3E6C4; --gold: #D9C08A;
+  --danger: #E07F70; --success: #7FBF9A;
+  --text: #F4EEE2; --text-muted: #CFC6B6; --faint: #9C927F;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --r-card: 20px; --r-sm: 12px;
+}
+html, body { background: #120E0A; }
+body { background: repeating-linear-gradient(90deg, rgba(217, 192, 138, 0.03) 0 1px, transparent 1px 64px), #120E0A !important; font-family: var(--font-body); font-weight: 500; }
+h1, h2, h3, h4, .splash-word, .brand h1, .column-header h2 { font-family: var(--font-display) !important; font-weight: 800 !important; text-transform: uppercase; letter-spacing: .01em !important; font-style: normal !important; }
+.splash-word, .brand h1 { color: var(--gold) !important; -webkit-text-fill-color: var(--gold) !important; background: none !important; }
+.splash-screen { background: repeating-linear-gradient(90deg, rgba(217, 192, 138, 0.035) 0 1px, transparent 1px 64px), #120E0A !important; }
+.splash-tag { font-family: var(--font-body) !important; font-weight: 700; color: var(--gold) !important; }
+.topbar { background: rgba(18, 14, 10, 0.94) !important; border-bottom: 1px solid rgba(217, 192, 138, 0.35) !important; }
+/* karty */
+.stat-card, .market-card, .tip-callout, .tip-row, .fixture-row, .league-item, .bt-summary, .monthly-stat, .best-bet-row, .match-locked, .bankroll-section, .toast {
+  border-radius: var(--r-card) !important; border-color: var(--border) !important; background-color: #1D1711;
+}
+.fixture-row, .league-item, .tip-row, .best-bet-row { border-radius: var(--r-sm) !important; }
+.stat-card, .market-card, .tip-callout { box-shadow: inset 0 1px 0 rgba(244, 238, 226, 0.06), 0 18px 40px -24px rgba(0, 0, 0, 0.8) !important; border-top: 1px solid var(--border) !important; border-left: 1px solid var(--border) !important; }
+.modal { border-radius: var(--r-card) !important; background: #1D1711 !important; border: 1px solid rgba(217, 192, 138, 0.35) !important; }
+/* tlačidlá: zlatá pilulka, veľké písmená */
+.btn-primary { border-radius: 999px !important; background: var(--gold) !important; color: #17120D !important; border: 1px solid var(--gold) !important; box-shadow: none !important; text-transform: uppercase; letter-spacing: .06em; font-weight: 700 !important; padding-left: 22px; padding-right: 22px; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-strong) !important; }
+.btn-ghost, .tip-save-btn, .btn-mini { border-radius: 999px !important; border: 1px solid var(--gold) !important; color: var(--gold) !important; background: transparent !important; text-transform: uppercase; letter-spacing: .06em; font-weight: 700 !important; font-size: 12px; }
+.btn-ghost:hover:not(:disabled), .tip-save-btn:hover:not(:disabled) { background: var(--gold) !important; color: #17120D !important; }
+.member-filter button, .member-tag, .member-btn, .tip-status, .strong-tip, .form-pill, .override-badge { border-radius: 999px !important; }
+input, select, textarea, .date-input, .edit-select, .modal input, .modal select, .modal textarea, .bankroll-controls input, .subscriber-form select, .custom-league-input { border-radius: var(--r-sm) !important; background: #18130E !important; border-color: rgba(217, 192, 138, 0.3) !important; font-family: var(--font-body) !important; }
+.prob-bar-track, .market-breakdown-bar, .bt-bar { border-radius: 999px !important; }
+.prob-bar-fill, .market-breakdown-bar-fill { border-radius: 999px !important; }
+.leads-title::before, .market-breakdown-title::before { content: "★ "; color: var(--gold); }
