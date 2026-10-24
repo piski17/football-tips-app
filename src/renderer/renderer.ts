@@ -652,7 +652,7 @@ async function analyzeFixture(fixture: any, leagueId: number, season: number) {
 }
 
 function renderAnalysis(r: any) {
-  // Zobrazí všetky tipy zápasu v pásme 65–80 % (predictor.ts vracia max. 1 na trh).
+  // Zobrazí všetky tipy zápasu v pásme 68–80 % (predictor.ts vracia max. 1 na trh).
   const topBets = r.bestBets || [];
 
   const gamesPlayedHtml = r.seasonGamesPlayed
@@ -703,7 +703,7 @@ function renderAnalysis(r: any) {
 
   const noBetsHtml =
     topBets.length === 0
-      ? `<div class="empty-state" style="margin-bottom:16px;">Pri tomto zápase nie je žiadny tip v pásme 65–80 %${
+      ? `<div class="empty-state" style="margin-bottom:16px;">Pri tomto zápase nie je žiadny tip v pásme 68–80 %${
           (r.lowValueBets || []).length > 0 ? ", ktorý by prešiel kontrolou kurzu" : ""
         }.</div>`
       : "";
@@ -2143,7 +2143,7 @@ function renderDayTips() {
         dayTipsInfo.failed ? ` · ${dayTipsInfo.failed} sa nepodarilo analyzovať` : ""
       }
     </p>
-    ${rows || `<div class="empty-state">V tento deň nie je žiadny tip, ktorý by prešiel pravidlami (65–80 % a kontrola kurzu).</div>`}
+    ${rows || `<div class="empty-state">V tento deň nie je žiadny tip, ktorý by prešiel pravidlami (68–80 % a kontrola kurzu).</div>`}
   `;
 
   analysisColumnEl.querySelectorAll<HTMLButtonElement>("[data-open]").forEach((btn) => {
