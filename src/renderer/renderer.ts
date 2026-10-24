@@ -1032,7 +1032,7 @@ function askTelegramTarget(): Promise<string | null> {
       <div class="modal" style="max-width:320px;">
         <h3>Odoslať do Telegramu?</h3>
         <div style="display:flex; flex-direction:column; gap:10px; margin-top:18px;">
-          <button class="btn-primary" id="tgChoicePremium">◆ PLATINUM kanál</button>
+          <button class="btn-primary" id="tgChoicePremium">◆ Členský kanál</button>
           <button class="btn-primary" id="tgChoiceFree">★ FREE kanál</button>
           <button class="btn-ghost" id="tgChoiceNone">Neposielať</button>
         </div>
@@ -1709,7 +1709,8 @@ function renderSubscribersList(subs: any[]) {
   subscribersListEl.innerHTML = subs
     .map((s) => {
       const status = subscriberStatus(s);
-      const tierLabel = s.tier === "group" ? "PLATINUM SEZÓNA" : "PLATINUM 1 / 3 MESIACE";
+      const len = (s as { length?: string }).length;
+      const tierLabel = s.tier === "group" ? "PLATINUM 6 MESIACOV (staré)" : len === "m3" ? "PLATINUM · 3 MESIACE" : "GOLD · 1 MESIAC";
       const dueDate = new Date(s.nextPaymentDue).toLocaleDateString("sk-SK");
       return `
         <div class="tip-row">
@@ -1790,11 +1791,12 @@ addSubscriberBtn.addEventListener("click", async () => {
     showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
-  const tier = subTierSelect.value;
-  const priceEur = tier === "group" ? 219 : 49;
-  // Platinum 1 mesiac, alebo Platinum 6 mesiacov (3 mesiace pridávaj vo webovej appke).
+  // Gold 1 mesiac (49 €) alebo Platinum 3 mesiace (119 €); 6 mesiacov zrušené 24. 10. 2026.
+  const length = subTierSelect.value === "m3" ? "m3" : "m1";
+  const tier = "individual";
+  const priceEur = length === "m3" ? 119 : 49;
   // Jún a júl sa nepočítajú – členstvo sa cez leto pozastaví (rovnako ako na webe).
-  const nextPaymentDue = memberEnd(new Date(), tier === "group" ? 6 : 1);
+  const nextPaymentDue = memberEnd(new Date(), length === "m3" ? 3 : 1);
 
   const subscriber = {
     id: `sub-${Date.now()}`,
@@ -1802,6 +1804,7 @@ addSubscriberBtn.addEventListener("click", async () => {
     contact: subContactInput.value.trim(),
     telegramChatId: subTelegramChatIdInput.value.trim() || undefined,
     tier,
+    length,
     priceEur,
     nextPaymentDue: nextPaymentDue.toISOString(),
     createdAt: new Date().toISOString(),
@@ -2535,7 +2538,7 @@ function openSendDayTips(): void {
       <div class="modal-actions" style="flex-wrap:wrap;">
         <button class="btn-ghost" data-close>Zavrieť</button>
         <button class="btn-primary" data-target="free">★ Poslať do FREE</button>
-        <button class="btn-primary" data-target="premium">◆ Poslať do PLATINUM</button>
+        <button class="btn-primary" data-target="premium">◆ Poslať do členského kanála</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -2594,7 +2597,7 @@ function openSendDayTips(): void {
     btn.addEventListener("click", async () => {
       const ids = selected();
       if (!ids.length) return;
-      const channel = btn.dataset.target === "free" ? "FREE" : "PLATINUM";
+      const channel = btn.dataset.target === "free" ? "FREE" : "ČLENSKÝ";
       if (!window.confirm(`Poslať ${plural(ids.length, "tip", "tipy", "tipov")} do kanála ${channel}?`)) return;
       overlay.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.disabled = true));
       infoEl.textContent = "Posielam…";
@@ -2707,7 +2710,7 @@ document.addEventListener("click", async (e) => {
   btn.disabled = false;
   renderLeads();
 });
-const LEAD_PLAN_LABEL: Record<string, string> = { start: "Platinum 1 mesiac", seria: "Platinum 3 mesiace", sampion: "Platinum 6 mesiacov", sampion_waitlist: "Platinum 6 mesiacov (náhradník)", premium: "starý odkaz Premium", vip: "Platinum 6 mesiacov (starý odkaz VIP)", vip_waitlist: "Platinum 6 mesiacov (náhradník)", clenstvo: "nevybral" };
+const LEAD_PLAN_LABEL: Record<string, string> = { start: "Gold 1 mesiac", seria: "Platinum 3 mesiace", sampion: "Platinum 3 mesiace (starý odkaz)", sampion_waitlist: "Platinum 3 mesiace (náhradník)", premium: "starý odkaz Premium", vip: "Platinum 3 mesiace (starý odkaz VIP)", vip_waitlist: "Platinum 3 mesiace (náhradník)", clenstvo: "nevybral" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
@@ -2738,7 +2741,7 @@ async function renderLeads() {
         (document.getElementById("subName") as HTMLInputElement).value = l.name || "";
         (document.getElementById("subContact") as HTMLInputElement).value = l.username ? "@" + l.username : "";
         (document.getElementById("subTelegramChatId") as HTMLInputElement).value = l.chatId;
-        (document.getElementById("subTier") as HTMLSelectElement).value = ["sampion", "sampion_waitlist", "vip", "vip_waitlist"].includes(l.plan) ? "group" : "individual";
+        (document.getElementById("subTier") as HTMLSelectElement).value = ["sampion", "sampion_waitlist", "vip", "vip_waitlist", "seria", "seria_waitlist"].includes(l.plan) ? "m3" : "m1";
         document.getElementById("subName")?.scrollIntoView({ behavior: "smooth", block: "center" });
         showToast("Údaje sú vyplnené – skontroluj ich a klikni na Pridať.");
       };
