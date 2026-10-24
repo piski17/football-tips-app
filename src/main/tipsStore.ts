@@ -137,7 +137,8 @@ export async function clearAllTips(): Promise<void> {
  */
 export async function checkResultsRemote(): Promise<SavedTip[] | null> {
   if (!hasWebSync()) return null;
-  const res = await webClient().post("/api/tips/check-results");
+  // Vyhodnotenie viacerých zápasov môže trvať dlhšie ako bežných 30 sekúnd (24. 10. 2026).
+  const res = await webClient().post("/api/tips/check-results", undefined, { timeout: 180000 });
   return res.data ?? [];
 }
 
