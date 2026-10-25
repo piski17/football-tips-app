@@ -52,6 +52,10 @@ const LEAGUE_PRESETS: LeaguePreset[] = [
   { id: 3, name: "UEFA Europa League", country: "Európa" },
   { id: 88, name: "Eredivisie", country: "Holandsko" },
   { id: 94, name: "Primeira Liga", country: "Portugalsko" },
+  // 25. 10. 2026 (Michalovo rozhodnutie): viac líg.
+  { id: 144, name: "Jupiler Pro League", country: "Belgicko" },
+  { id: 203, name: "Süper Lig", country: "Turecko" },
+  { id: 106, name: "Ekstraklasa", country: "Poľsko" },
   // Liga národov (id 5) odstránená 6. 10. 2026 - reprezentácie majú málo zápasov, tipy nespoľahlivé.
 ];
 
