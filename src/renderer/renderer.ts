@@ -1710,7 +1710,7 @@ function renderSubscribersList(subs: any[]) {
     .map((s) => {
       const status = subscriberStatus(s);
       const len = (s as { length?: string }).length;
-      const tierLabel = s.tier === "group" ? "PLATINUM 6 MESIACOV (staré)" : len === "m3" ? "PLATINUM · 3 MESIACE" : "GOLD · 1 MESIAC";
+      const tierLabel = s.tier === "group" ? "PLATINUM 6 MESIACOV (staré)" : len === "m3" ? "ONYX · 6 MESIACOV" : "GOLD · 50 DNÍ";
       const dueDate = new Date(s.nextPaymentDue).toLocaleDateString("sk-SK");
       return `
         <div class="tip-row">
@@ -1761,14 +1761,18 @@ closeSubscribersBtn.addEventListener("click", () => {
   subscribersModal.hidden = true;
 });
 
-/** Koniec členstva na `months` mesiacov od `from`, bez letnej prestávky (jún a júl). */
-function memberEnd(from: Date, months: number): Date {
+/** Koniec členstva na `months` mesiacov (alebo `days` dní) od `from`, bez letnej prestávky (jún a júl). */
+function memberEnd(from: Date, months: number, days?: number): Date {
   const start = new Date(from);
   start.setHours(23, 59, 0, 0);
   const calEnd = new Date(start);
-  const day = calEnd.getDate();
-  calEnd.setMonth(calEnd.getMonth() + months);
-  if (calEnd.getDate() < day) calEnd.setDate(0);
+  if (days) {
+    calEnd.setDate(calEnd.getDate() + days);
+  } else {
+    const day = calEnd.getDate();
+    calEnd.setMonth(calEnd.getMonth() + months);
+    if (calEnd.getDate() < day) calEnd.setDate(0);
+  }
   let remaining = calEnd.getTime() - start.getTime();
   let cursor = start;
   for (let guard = 0; guard < 20; guard++) {
@@ -1791,12 +1795,12 @@ addSubscriberBtn.addEventListener("click", async () => {
     showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
-  // Gold 1 mesiac (49 €) alebo Platinum 3 mesiace (119 €); 6 mesiacov zrušené 24. 10. 2026.
+  // Gold 50 dní (69 €) alebo Onyx 6 mesiacov (199 €) – od 26. 10. 2026.
   const length = subTierSelect.value === "m3" ? "m3" : "m1";
   const tier = "individual";
-  const priceEur = length === "m3" ? 119 : 49;
+  const priceEur = length === "m3" ? 199 : 69;
   // Jún a júl sa nepočítajú – členstvo sa cez leto pozastaví (rovnako ako na webe).
-  const nextPaymentDue = memberEnd(new Date(), length === "m3" ? 3 : 1);
+  const nextPaymentDue = length === "m3" ? memberEnd(new Date(), 6) : memberEnd(new Date(), 0, 50);
 
   const subscriber = {
     id: `sub-${Date.now()}`,
@@ -2710,7 +2714,7 @@ document.addEventListener("click", async (e) => {
   btn.disabled = false;
   renderLeads();
 });
-const LEAD_PLAN_LABEL: Record<string, string> = { start: "Gold 1 mesiac", seria: "Platinum 3 mesiace", sampion: "Platinum 3 mesiace (starý odkaz)", sampion_waitlist: "Platinum 3 mesiace (náhradník)", premium: "starý odkaz Premium", vip: "Platinum 3 mesiace (starý odkaz VIP)", vip_waitlist: "Platinum 3 mesiace (náhradník)", clenstvo: "nevybral" };
+const LEAD_PLAN_LABEL: Record<string, string> = { start: "Gold 50 dní", seria: "Onyx 6 mesiacov", sampion: "Onyx 6 mesiacov (starý odkaz)", sampion_waitlist: "Onyx 6 mesiacov (náhradník)", premium: "starý odkaz Premium", vip: "Onyx 6 mesiacov (starý odkaz VIP)", vip_waitlist: "Onyx 6 mesiacov (náhradník)", clenstvo: "nevybral" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
