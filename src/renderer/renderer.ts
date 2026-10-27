@@ -1669,9 +1669,9 @@ function daysUntil(dateStr: string): number {
 
 // Balíčky tipov (od 27. 10. 2026) – rovnaké ako na webe (src/payments.ts PAY_TERMS).
 const PACKAGES: Record<string, { name: string; tips: number; price: number; months: number }> = {
-  t75: { name: "ŠTART", tips: 75, price: 67, months: 3 },
-  t150: { name: "GOLD", tips: 150, price: 109, months: 6 },
-  t300: { name: "ONYX", tips: 300, price: 179, months: 12 },
+  t75: { name: "ŠTART", tips: 75, price: 67, months: 1200 },
+  t150: { name: "GOLD", tips: 150, price: 109, months: 1200 },
+  t300: { name: "ONYX", tips: 300, price: 179, months: 1200 },
 };
 
 /** Balíček ešte beží – tipy každému členovi počíta server (pole pkg); bez neho podľa dátumu. */
@@ -1684,8 +1684,6 @@ function subscriberStatus(sub: any): { label: string; cls: string } {
   if (k && k.total != null) {
     if (!k.active) return { label: k.left === 0 ? "Tipy minuté" : "Skončil", cls: "lost" };
     if (k.left <= 5) return { label: k.left === 1 ? "Posledný tip" : `Ostáva ${k.left} tipov`, cls: "void" };
-    const d = daysUntil(k.validUntil);
-    if (d <= 3) return { label: `Platnosť ${d <= 0 ? "končí dnes" : `o ${d} d.`}`, cls: "void" };
     return { label: "Aktívny", cls: "won" };
   }
   const days = daysUntil(sub.nextPaymentDue);
@@ -1737,7 +1735,7 @@ function renderSubscribersList(subs: any[]) {
         <div class="tip-row">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(s.name)} <span class="muted small">(${tierLabel} · ${s.priceEur} €)</span></div>
-            <div class="tip-row-market">${used}${escapeHtml(s.contact || "")}${s.contact ? " · " : ""}${k && k.total != null ? "platí najneskôr do" : "do"} ${dueDate}</div>
+            <div class="tip-row-market">${used}${escapeHtml(s.contact || "")}${s.contact ? " · " : ""}${k && k.total != null ? "bez časového limitu" : `do ${dueDate}`}</div>
           </div>
           <span class="tip-status ${status.cls}">${status.label}</span>
           <button class="tip-delete-btn" data-extend-id="${s.id}" title="Zapísať ďalší zaplatený balíček (rovnaký)" style="background:var(--surface-alt); color:var(--gold-bright); border-radius:6px; padding:4px 8px; font-size:12px;">+ balíček</button>
@@ -1757,7 +1755,7 @@ function renderSubscribersList(subs: any[]) {
       const term = PACKAGES[sub.length] ? sub.length : sub.length === "m1" || !sub.length ? "t150" : "t300";
       const p = PACKAGES[term];
       const end = memberEnd(new Date(), p.months);
-      if (!window.confirm(`Zapísať ${sub.name} ďalší balíček ${p.name} · ${p.tips} tipov (${p.price} €), platí najneskôr do ${end.toLocaleDateString("sk-SK")}?`)) return;
+      if (!window.confirm(`Zapísať ${sub.name} ďalší balíček ${p.name} · ${p.tips} tipov (${p.price} €)?`)) return;
       try {
         await window.api.updateSubscriber(id, { nextPaymentDue: end.toISOString(), periodStart: new Date().toISOString(), length: term, tier: "individual", tips: p.tips, priceEur: p.price });
         openSubscribers();
@@ -1825,7 +1823,7 @@ addSubscriberBtn.addEventListener("click", async () => {
   const pkg = PACKAGES[length];
   const tier = "individual";
   const priceEur = pkg.price;
-  // Platnosť najviac 3 / 6 / 12 mesiacov, jún a júl sa nepočítajú (rovnako ako na webe).
+  // Bez časového limitu (1200 mesiacov = technicky „navždy“), rovnako ako na webe.
   const nextPaymentDue = memberEnd(new Date(), pkg.months);
 
   const subscriber = {
