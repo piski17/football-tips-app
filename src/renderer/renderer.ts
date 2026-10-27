@@ -1667,7 +1667,27 @@ function daysUntil(dateStr: string): number {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
+// Balíčky tipov (od 27. 10. 2026) – rovnaké ako na webe (src/payments.ts PAY_TERMS).
+const PACKAGES: Record<string, { name: string; tips: number; price: number; months: number }> = {
+  t75: { name: "ŠTART", tips: 75, price: 67, months: 3 },
+  t150: { name: "GOLD", tips: 150, price: 109, months: 6 },
+  t300: { name: "ONYX", tips: 300, price: 179, months: 12 },
+};
+
+/** Balíček ešte beží – tipy každému členovi počíta server (pole pkg); bez neho podľa dátumu. */
+function memberActive(sub: any): boolean {
+  return sub.pkg ? !!sub.pkg.active : daysUntil(sub.nextPaymentDue) >= 0;
+}
+
 function subscriberStatus(sub: any): { label: string; cls: string } {
+  const k = sub.pkg;
+  if (k && k.total != null) {
+    if (!k.active) return { label: k.left === 0 ? "Tipy minuté" : "Skončil", cls: "lost" };
+    if (k.left <= 5) return { label: k.left === 1 ? "Posledný tip" : `Ostáva ${k.left} tipov`, cls: "void" };
+    const d = daysUntil(k.validUntil);
+    if (d <= 3) return { label: `Platnosť ${d <= 0 ? "končí dnes" : `o ${d} d.`}`, cls: "void" };
+    return { label: "Aktívny", cls: "won" };
+  }
   const days = daysUntil(sub.nextPaymentDue);
   if (days < 0) return { label: "Vypršal", cls: "lost" };
   if (days <= 3) return { label: `Vyprší o ${days} d.`, cls: "void" };
@@ -1690,15 +1710,13 @@ async function openSubscribers() {
 }
 
 function renderSubscribersList(subs: any[]) {
-  const activeCount = subs.filter((s) => daysUntil(s.nextPaymentDue) >= 0).length;
-  const monthlyRevenue = subs
-    .filter((s) => daysUntil(s.nextPaymentDue) >= 0)
-    .reduce((sum, s) => sum + (s.priceEur || 0), 0);
+  const active = subs.filter(memberActive);
+  const paid = active.reduce((sum, s) => sum + (s.priceEur || 0), 0);
 
   subscribersSummaryEl.innerHTML = `
     <span>Spolu: <strong>${subs.length}</strong></span>
-    <span>Aktívnych: <strong>${activeCount}</strong></span>
-    <span>Mesačný príjem: <strong>${monthlyRevenue} €</strong></span>
+    <span>Aktívnych: <strong>${active.length}</strong></span>
+    <span>Zaplatené (aktívni): <strong>${paid} €</strong></span>
   `;
 
   if (subs.length === 0) {
@@ -1709,17 +1727,20 @@ function renderSubscribersList(subs: any[]) {
   subscribersListEl.innerHTML = subs
     .map((s) => {
       const status = subscriberStatus(s);
-      const len = (s as { length?: string }).length;
-      const tierLabel = s.tier === "group" ? "PLATINUM 6 MESIACOV (staré)" : len === "m3" ? "ONYX · 6 MESIACOV" : "GOLD · 50 DNÍ";
+      const len = (s as { length?: string }).length ?? "";
+      const pk = PACKAGES[len];
+      const tierLabel = pk ? `${pk.name} · ${pk.tips} TIPOV` : s.tier === "group" ? "PLATINUM 6 MESIACOV (staré)" : len === "m3" ? "ONYX · 6 MESIACOV (staré)" : "GOLD · 50 DNÍ (staré)";
       const dueDate = new Date(s.nextPaymentDue).toLocaleDateString("sk-SK");
+      const k = s.pkg;
+      const used = k && k.total != null ? `${k.used} / ${k.total} tipov${k.pending ? ` (${k.pending} čaká)` : ""} · ` : "";
       return `
         <div class="tip-row">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(s.name)} <span class="muted small">(${tierLabel} · ${s.priceEur} €)</span></div>
-            <div class="tip-row-market">${escapeHtml(s.contact || "")} · najbližšia platba: ${dueDate}</div>
+            <div class="tip-row-market">${used}${escapeHtml(s.contact || "")}${s.contact ? " · " : ""}${k && k.total != null ? "platí najneskôr do" : "do"} ${dueDate}</div>
           </div>
           <span class="tip-status ${status.cls}">${status.label}</span>
-          <button class="tip-delete-btn" data-extend-id="${s.id}" title="Predĺžiť o mesiac" style="background:var(--surface-alt); color:var(--gold-bright); border-radius:6px; padding:4px 8px; font-size:12px;">+30d</button>
+          <button class="tip-delete-btn" data-extend-id="${s.id}" title="Zapísať ďalší zaplatený balíček (rovnaký)" style="background:var(--surface-alt); color:var(--gold-bright); border-radius:6px; padding:4px 8px; font-size:12px;">+ balíček</button>
           <button class="tip-delete-btn" data-remove-id="${s.id}" title="Zmazať">✕</button>
         </div>
       `;
@@ -1731,10 +1752,14 @@ function renderSubscribersList(subs: any[]) {
       const id = (e.currentTarget as HTMLElement).dataset.extendId!;
       const sub = subs.find((s) => s.id === id);
       if (!sub) return;
-      const base = daysUntil(sub.nextPaymentDue) > 0 ? new Date(sub.nextPaymentDue) : new Date();
-      base.setDate(base.getDate() + 30);
+      // Ďalší balíček (rovnaký; staré Gold 50 dní → Gold, staré 6 mesiacov → Onyx). Začína dnes,
+      // tipy idú najprv do starého balíčka, kým sa nemiňú (počíta server).
+      const term = PACKAGES[sub.length] ? sub.length : sub.length === "m1" || !sub.length ? "t150" : "t300";
+      const p = PACKAGES[term];
+      const end = memberEnd(new Date(), p.months);
+      if (!window.confirm(`Zapísať ${sub.name} ďalší balíček ${p.name} · ${p.tips} tipov (${p.price} €), platí najneskôr do ${end.toLocaleDateString("sk-SK")}?`)) return;
       try {
-        await window.api.updateSubscriber(id, { nextPaymentDue: base.toISOString() });
+        await window.api.updateSubscriber(id, { nextPaymentDue: end.toISOString(), periodStart: new Date().toISOString(), length: term, tier: "individual", tips: p.tips, priceEur: p.price });
         openSubscribers();
       } catch (err: any) {
         showToast(`Predĺženie zlyhalo: ${err?.message ?? String(err)}`);
@@ -1795,12 +1820,13 @@ addSubscriberBtn.addEventListener("click", async () => {
     showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
-  // Gold 50 dní (69 €) alebo Onyx 6 mesiacov (199 €) – od 26. 10. 2026.
-  const length = subTierSelect.value === "m3" ? "m3" : "m1";
+  // Balíčky tipov (od 27. 10. 2026): Štart 75 / Gold 150 / Onyx 300 tipov.
+  const length = PACKAGES[subTierSelect.value] ? subTierSelect.value : "t150";
+  const pkg = PACKAGES[length];
   const tier = "individual";
-  const priceEur = length === "m3" ? 199 : 69;
-  // Jún a júl sa nepočítajú – členstvo sa cez leto pozastaví (rovnako ako na webe).
-  const nextPaymentDue = length === "m3" ? memberEnd(new Date(), 6) : memberEnd(new Date(), 0, 50);
+  const priceEur = pkg.price;
+  // Platnosť najviac 3 / 6 / 12 mesiacov, jún a júl sa nepočítajú (rovnako ako na webe).
+  const nextPaymentDue = memberEnd(new Date(), pkg.months);
 
   const subscriber = {
     id: `sub-${Date.now()}`,
@@ -1809,8 +1835,11 @@ addSubscriberBtn.addEventListener("click", async () => {
     telegramChatId: subTelegramChatIdInput.value.trim() || undefined,
     tier,
     length,
+    tips: pkg.tips,
     priceEur,
     nextPaymentDue: nextPaymentDue.toISOString(),
+    startDate: new Date().toISOString(),
+    periodStart: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   };
 
@@ -2714,7 +2743,7 @@ document.addEventListener("click", async (e) => {
   btn.disabled = false;
   renderLeads();
 });
-const LEAD_PLAN_LABEL: Record<string, string> = { start: "Gold 50 dní", seria: "Onyx 6 mesiacov", sampion: "Onyx 6 mesiacov (starý odkaz)", sampion_waitlist: "Onyx 6 mesiacov (náhradník)", premium: "starý odkaz Premium", vip: "Onyx 6 mesiacov (starý odkaz VIP)", vip_waitlist: "Onyx 6 mesiacov (náhradník)", clenstvo: "nevybral" };
+const LEAD_PLAN_LABEL: Record<string, string> = { stat: "Štart 75 tipov", gold: "Gold 150 tipov", onyx: "Onyx 300 tipov", start: "Gold 150 tipov (starý odkaz)", seria: "Onyx 300 tipov (starý odkaz)", sampion: "Onyx 300 tipov (starý odkaz)", vip: "Onyx 300 tipov (starý odkaz VIP)", premium: "starý odkaz Premium", clenstvo: "nevybral", otazka: "otázka z webu" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
@@ -2730,7 +2759,7 @@ async function renderLeads() {
         const date = isNaN(d.getTime()) ? "" : `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`;
         return `<div class="tip-row lead-row">
           <div class="lead-main"><strong>${i + 1}. ${escapeHtml(l.name || "Neznámy")}</strong>${l.username ? ` <span class="muted">@${escapeHtml(l.username)}</span>` : ""}
-            <div class="muted small">${l.paidAt ? "✅ zaplatil · " : l.salesMsgAt ? "✉️ dostal správu o predaji · " : ""}${escapeHtml(LEAD_PLAN_LABEL[l.plan] || l.plan)} · zapísaný ${date} · ID ${escapeHtml(l.chatId)}</div></div>
+            <div class="muted small">${l.paidAt ? "✅ zaplatil · " : l.salesMsgAt ? "✉️ dostal správu o predaji · " : ""}${escapeHtml(LEAD_PLAN_LABEL[String(l.plan).replace(/_waitlist$/, "")] || l.plan)} · zapísaný ${date} · ID ${escapeHtml(l.chatId)}</div></div>
           <div class="lead-actions">
             <a class="btn-ghost btn-mini" href="tg://user?id=${encodeURIComponent(l.chatId)}">Otvoriť chat</a>
             <button class="btn-ghost btn-mini" data-lead-add="${escapeHtml(l.chatId)}">Pridať ako predplatiteľa</button>
@@ -2745,7 +2774,8 @@ async function renderLeads() {
         (document.getElementById("subName") as HTMLInputElement).value = l.name || "";
         (document.getElementById("subContact") as HTMLInputElement).value = l.username ? "@" + l.username : "";
         (document.getElementById("subTelegramChatId") as HTMLInputElement).value = l.chatId;
-        (document.getElementById("subTier") as HTMLSelectElement).value = ["sampion", "sampion_waitlist", "vip", "vip_waitlist", "seria", "seria_waitlist"].includes(l.plan) ? "m3" : "m1";
+        (document.getElementById("subTier") as HTMLSelectElement).value =
+          ({ stat: "t75", gold: "t150", start: "t150", onyx: "t300", seria: "t300", sampion: "t300", vip: "t300" } as Record<string, string>)[String(l.plan).replace(/_waitlist$/, "")] || "t150";
         document.getElementById("subName")?.scrollIntoView({ behavior: "smooth", block: "center" });
         showToast("Údaje sú vyplnené – skontroluj ich a klikni na Pridať.");
       };
