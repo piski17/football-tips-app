@@ -1669,9 +1669,9 @@ function daysUntil(dateStr: string): number {
 
 // Balíčky tipov (od 27. 10. 2026) – rovnaké ako na webe (src/payments.ts PAY_TERMS).
 const PACKAGES: Record<string, { name: string; tips: number; price: number; months: number }> = {
-  t75: { name: "ŠTART", tips: 75, price: 67, months: 1200 },
-  t150: { name: "GOLD", tips: 150, price: 109, months: 1200 },
-  t300: { name: "ONYX", tips: 300, price: 179, months: 1200 },
+  t75: { name: "ŠTART", tips: 100, price: 89, months: 1200 },
+  t150: { name: "GOLD", tips: 225, price: 165, months: 1200 },
+  t300: { name: "ONYX", tips: 450, price: 269, months: 1200 },
 };
 
 /** Balíček ešte beží – tipy každému členovi počíta server (pole pkg); bez neho podľa dátumu. */
@@ -1818,7 +1818,7 @@ addSubscriberBtn.addEventListener("click", async () => {
     showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
-  // Balíčky tipov (od 27. 10. 2026): Štart 75 / Gold 150 / Onyx 300 tipov.
+  // Balíčky tipov (od 27. 10. 2026): Štart 100 / Gold 225 / Onyx 450 tipov.
   const length = PACKAGES[subTierSelect.value] ? subTierSelect.value : "t150";
   const pkg = PACKAGES[length];
   const tier = "individual";
@@ -2741,7 +2741,7 @@ document.addEventListener("click", async (e) => {
   btn.disabled = false;
   renderLeads();
 });
-const LEAD_PLAN_LABEL: Record<string, string> = { stat: "Štart 75 tipov", gold: "Gold 150 tipov", onyx: "Onyx 300 tipov", start: "Gold 150 tipov (starý odkaz)", seria: "Onyx 300 tipov (starý odkaz)", sampion: "Onyx 300 tipov (starý odkaz)", vip: "Onyx 300 tipov (starý odkaz VIP)", premium: "starý odkaz Premium", clenstvo: "nevybral", otazka: "otázka z webu" };
+const LEAD_PLAN_LABEL: Record<string, string> = { stat: "Štart 100 tipov", gold: "Gold 225 tipov", onyx: "Onyx 450 tipov", start: "Gold 225 tipov (starý odkaz)", seria: "Onyx 450 tipov (starý odkaz)", sampion: "Onyx 450 tipov (starý odkaz)", vip: "Onyx 450 tipov (starý odkaz VIP)", premium: "starý odkaz Premium", clenstvo: "nevybral", otazka: "otázka z webu" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
