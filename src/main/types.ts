@@ -71,6 +71,10 @@ export interface MarketPick {
   /** Pri rozpore: čistý odhad modelu a odhad stávkoviek (v %), pre tichú evidenciu. */
   modelProbability?: number;
   marketProbability?: number;
+  /** Dvojitá kontrola (27. 10. 2026): šanca pri 60 % model / 40 % stávkovky – počíta web. */
+  strictProbability?: number;
+  /** Neprešiel pri 60 / 40 – web ho uloží len do sledovaných. */
+  strictFail?: boolean;
 }
 
 /** Odhad pre trh typu Over/Under (rohy, karty) založený na kombinovanom Poissonovom modeli. */
@@ -252,6 +256,10 @@ export interface SavedTip {
   overrideFilter?: boolean;
   /** Tip doplnený ručne po zápase (s výsledkom) - neprechádza automatickým vyhodnotením. */
   manualEntry?: boolean;
+  /** Šanca pri 60 % model / 40 % stávkovky (dvojitá kontrola, 27. 10. 2026). Web podľa nej rozhodne, či ide tip len do sledovaných. */
+  strictProbability?: number;
+  strictFail?: boolean;
+  watchOnly?: boolean;
   /** Tip skrytý z histórie tipov - naďalej sa ráta do štatistík a zobrazuje na prezentačnej stránke. */
   archived?: boolean;
   /** Výsledok alebo kurz bol ručne opravený v histórii. */

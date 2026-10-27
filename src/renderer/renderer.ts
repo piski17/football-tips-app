@@ -1090,6 +1090,7 @@ function initSaveTipButton(r: any) {
         selection: chosenBet.selection,
         probability: chosenBet.probability,
         odds: chosenBet.odds ?? null,
+        ...(typeof chosenBet.strictProbability === "number" ? { strictProbability: chosenBet.strictProbability } : {}),
         ...(fromLow ? { overrideFilter: true } : {}),
         savedAt: new Date().toISOString(),
         status: "pending",
@@ -2225,6 +2226,7 @@ function renderDayTips() {
         selection: bet.selection,
         probability: bet.probability,
         odds: bet.odds ?? null,
+        ...(typeof bet.strictProbability === "number" ? { strictProbability: bet.strictProbability } : {}),
         savedAt: new Date().toISOString(),
         status: "pending",
         // V Tipoch dňa označený ⭐ Silný tip dňa si značku nesie aj do Histórie tipov.
