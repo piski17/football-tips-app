@@ -1668,7 +1668,13 @@ function daysUntil(dateStr: string): number {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
-// Balíčky tipov (od 27. 10. 2026) – rovnaké ako na webe (src/payments.ts PAY_TERMS).
+// Členstvo (od 28. 10. 2026) – rovnaké ako na webe (src/payments.ts PAY_TERMS): Gold 100 tipov 79 €, Onyx 250 tipov 169 €,
+// bez časového limitu. Garancia: členstvo v mínuse → 1 mesiac zadarmo (pridáva sa v app.tipradar.eu v karte Garancia).
+const MEMBERSHIPS: Record<string, { name: string; tips: number; price: number; months: number }> = {
+  p100: { name: "GOLD", tips: 100, price: 79, months: 1200 },
+  p250: { name: "ONYX", tips: 250, price: 169, months: 1200 },
+};
+// Staré balíčky tipov (27. – 28. 10. 2026), len na zobrazenie starších záznamov.
 const PACKAGES: Record<string, { name: string; tips: number; price: number; months: number }> = {
   t75: { name: "ŠTART", tips: 100, price: 89, months: 1200 },
   t150: { name: "GOLD", tips: 250, price: 179, months: 1200 },
@@ -1728,7 +1734,8 @@ function renderSubscribersList(subs: any[]) {
       const status = subscriberStatus(s);
       const len = (s as { length?: string }).length ?? "";
       const pk = PACKAGES[len];
-      const tierLabel = pk ? `${pk.name} · ${pk.tips} TIPOV` : s.tier === "group" ? "PLATINUM 6 MESIACOV (staré)" : len === "m3" ? "ONYX · 6 MESIACOV (staré)" : "GOLD · 50 DNÍ (staré)";
+      const ms = MEMBERSHIPS[len];
+      const tierLabel = ms ? `${ms.name} · ${ms.tips} TIPOV` : pk ? `${pk.name} · ${pk.tips} TIPOV (starý balíček)` : s.tier === "group" ? "PLATINUM 6 MESIACOV (staré)" : len === "m3" ? "ONYX · 6 MESIACOV (staré)" : "GOLD · 50 DNÍ (staré)";
       const dueDate = new Date(s.nextPaymentDue).toLocaleDateString("sk-SK");
       const k = s.pkg;
       const used = k && k.total != null ? `${k.used} / ${k.total} tipov${k.pending ? ` (${k.pending} čaká)` : ""} · ` : "";
@@ -1736,10 +1743,10 @@ function renderSubscribersList(subs: any[]) {
         <div class="tip-row">
           <div class="tip-row-info">
             <div class="tip-row-match">${escapeHtml(s.name)} <span class="muted small">(${tierLabel} · ${s.priceEur} €)</span></div>
-            <div class="tip-row-market">${used}${escapeHtml(s.contact || "")}${s.contact ? " · " : ""}${k && k.total != null ? "bez časového limitu" : `do ${dueDate}`}</div>
+            <div class="tip-row-market">${used}${escapeHtml(s.contact || "")}${s.contact ? " · " : ""}${k && k.total != null ? "bez časového limitu" : `${k && k.free ? "mesiac zadarmo " : ""}do ${dueDate}`}</div>
           </div>
           <span class="tip-status ${status.cls}">${status.label}</span>
-          <button class="tip-delete-btn" data-extend-id="${s.id}" title="Zapísať ďalší zaplatený balíček (rovnaký)" style="background:var(--surface-alt); color:var(--gold-bright); border-radius:6px; padding:4px 8px; font-size:12px;">+ balíček</button>
+          <button class="tip-delete-btn" data-extend-id="${s.id}" title="Zapísať ďalšie zaplatené členstvo (rovnaké)" style="background:var(--surface-alt); color:var(--gold-bright); border-radius:6px; padding:4px 8px; font-size:12px;">+ členstvo</button>
           <button class="tip-delete-btn" data-remove-id="${s.id}" title="Zmazať">✕</button>
         </div>
       `;
@@ -1751,12 +1758,12 @@ function renderSubscribersList(subs: any[]) {
       const id = (e.currentTarget as HTMLElement).dataset.extendId!;
       const sub = subs.find((s) => s.id === id);
       if (!sub) return;
-      // Ďalší balíček (rovnaký; staré Gold 50 dní → Gold, staré 6 mesiacov → Onyx). Začína dnes,
-      // tipy idú najprv do starého balíčka, kým sa nemiňú (počíta server).
-      const term = PACKAGES[sub.length] ? sub.length : sub.length === "m1" || !sub.length ? "t150" : "t300";
-      const p = PACKAGES[term];
+      // Ďalšie členstvo (rovnaké; staré Štart / 50 dní → Gold, ostatné staré → Onyx). Začína dnes,
+      // tipy idú najprv do starého členstva (alebo mesiaca zadarmo), kým sa nemiňú (počíta server).
+      const term = MEMBERSHIPS[sub.length] ? sub.length : sub.length === "t75" || sub.length === "m1" || !sub.length ? "p100" : "p250";
+      const p = MEMBERSHIPS[term];
       const end = memberEnd(new Date(), p.months);
-      if (!window.confirm(`Zapísať ${sub.name} ďalší balíček ${p.name} · ${p.tips} tipov (${p.price} €)?`)) return;
+      if (!window.confirm(`Zapísať ${sub.name} ďalšie členstvo ${p.name} · ${p.tips} tipov (${p.price} €)?`)) return;
       try {
         await window.api.updateSubscriber(id, { nextPaymentDue: end.toISOString(), periodStart: new Date().toISOString(), length: term, tier: "individual", tips: p.tips, priceEur: p.price });
         openSubscribers();
@@ -1819,12 +1826,11 @@ addSubscriberBtn.addEventListener("click", async () => {
     showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
-  // Balíčky tipov (od 27. 10. 2026): Štart 100 / Gold 250 / Onyx 500 tipov.
-  const length = PACKAGES[subTierSelect.value] ? subTierSelect.value : "t150";
-  const pkg = PACKAGES[length];
+  // Členstvo (od 28. 10. 2026): Gold 100 / Onyx 250 tipov, bez časového limitu (rovnako ako na webe).
+  const length = MEMBERSHIPS[subTierSelect.value] ? subTierSelect.value : "p100";
+  const pkg = MEMBERSHIPS[length];
   const tier = "individual";
   const priceEur = pkg.price;
-  // Bez časového limitu (1200 mesiacov = technicky „navždy“), rovnako ako na webe.
   const nextPaymentDue = memberEnd(new Date(), pkg.months);
 
   const subscriber = {
@@ -2775,7 +2781,7 @@ async function renderLeads() {
         (document.getElementById("subContact") as HTMLInputElement).value = l.username ? "@" + l.username : "";
         (document.getElementById("subTelegramChatId") as HTMLInputElement).value = l.chatId;
         (document.getElementById("subTier") as HTMLSelectElement).value =
-          ({ stat: "t75", gold: "t150", start: "t150", onyx: "t300", seria: "t300", sampion: "t300", vip: "t300" } as Record<string, string>)[String(l.plan).replace(/_waitlist$/, "")] || "t150";
+          ({ gold: "p100", stat: "p100", start: "p100", onyx: "p250", seria: "p250", sampion: "p250", vip: "p250" } as Record<string, string>)[String(l.plan).replace(/_waitlist$/, "")] || "p100";
         document.getElementById("subName")?.scrollIntoView({ behavior: "smooth", block: "center" });
         showToast("Údaje sú vyplnené – skontroluj ich a klikni na Pridať.");
       };
