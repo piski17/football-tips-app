@@ -1668,12 +1668,12 @@ function daysUntil(dateStr: string): number {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
-// Členstvo (od 29. 10. 2026 večer) – rovnaké ako na webe (src/payments.ts PAY_TERMS): Štart 50 tipov 35 €, Gold 100 tipov 65 €, Platinum 200 tipov 119 €,
-// bez časového limitu. Garancia: členstvo v mínuse → 1 mesiac zadarmo (pridáva sa v app.tipradar.eu v karte Garancia).
+// Členstvo (od 29. 10. 2026 večer) – rovnaké ako na webe (src/payments.ts PAY_TERMS): Štart 50 tipov 49 €, Gold 100 tipov 79 €, Platinum 200 tipov 139 €,
+// bez časového limitu. Garancia: prvých 30 tipov bez rizika (peniaze späť) a členstvo v mínuse → 1 mesiac zadarmo (oboje v app.tipradar.eu v karte Garancia).
 const MEMBERSHIPS: Record<string, { name: string; tips: number; price: number; months: number }> = {
-  p50: { name: "ŠTART", tips: 50, price: 35, months: 1200 },
-  p100: { name: "GOLD", tips: 100, price: 65, months: 1200 },
-  p200: { name: "PLATINUM", tips: 200, price: 119, months: 1200 },
+  p50: { name: "ŠTART", tips: 50, price: 49, months: 1200 },
+  p100: { name: "GOLD", tips: 100, price: 79, months: 1200 },
+  p200: { name: "PLATINUM", tips: 200, price: 139, months: 1200 },
 };
 // Staré členstvá a balíčky tipov (27. – 29. 10. 2026), len na zobrazenie starších záznamov.
 const PACKAGES: Record<string, { name: string; tips: number; price: number; months: number }> = {
