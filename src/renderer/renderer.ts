@@ -1668,11 +1668,12 @@ function daysUntil(dateStr: string): number {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
-// Členstvo (od 28. 10. 2026) – rovnaké ako na webe (src/payments.ts PAY_TERMS): Gold 100 tipov 79 €, Onyx 250 tipov 169 €,
+// Členstvo (od 29. 10. 2026) – rovnaké ako na webe (src/payments.ts PAY_TERMS): Štart 75 tipov 49 €, Gold 150 tipov 89 €, Onyx 250 tipov 139 €,
 // bez časového limitu. Garancia: členstvo v mínuse → 1 mesiac zadarmo (pridáva sa v app.tipradar.eu v karte Garancia).
 const MEMBERSHIPS: Record<string, { name: string; tips: number; price: number; months: number }> = {
-  p100: { name: "GOLD", tips: 100, price: 79, months: 1200 },
-  p250: { name: "ONYX", tips: 250, price: 169, months: 1200 },
+  p75: { name: "ŠTART", tips: 75, price: 49, months: 1200 },
+  p150: { name: "GOLD", tips: 150, price: 89, months: 1200 },
+  p250: { name: "ONYX", tips: 250, price: 139, months: 1200 },
 };
 // Staré balíčky tipov (27. – 28. 10. 2026), len na zobrazenie starších záznamov.
 const PACKAGES: Record<string, { name: string; tips: number; price: number; months: number }> = {
@@ -1758,9 +1759,9 @@ function renderSubscribersList(subs: any[]) {
       const id = (e.currentTarget as HTMLElement).dataset.extendId!;
       const sub = subs.find((s) => s.id === id);
       if (!sub) return;
-      // Ďalšie členstvo (rovnaké; staré Štart / 50 dní → Gold, ostatné staré → Onyx). Začína dnes,
+      // Ďalšie členstvo (rovnaké; staré Štart / 50 dní → Štart, Gold 250 / 3 mesiace → Gold, ostatné staré → Onyx). Začína dnes,
       // tipy idú najprv do starého členstva (alebo mesiaca zadarmo), kým sa nemiňú (počíta server).
-      const term = MEMBERSHIPS[sub.length] ? sub.length : sub.length === "t75" || sub.length === "m1" || !sub.length ? "p100" : "p250";
+      const term = MEMBERSHIPS[sub.length] ? sub.length : sub.length === "t75" || sub.length === "m1" || !sub.length ? "p75" : sub.length === "t150" || sub.length === "m3" ? "p150" : "p250";
       const p = MEMBERSHIPS[term];
       const end = memberEnd(new Date(), p.months);
       if (!window.confirm(`Zapísať ${sub.name} ďalšie členstvo ${p.name} · ${p.tips} tipov (${p.price} €)?`)) return;
@@ -1826,8 +1827,8 @@ addSubscriberBtn.addEventListener("click", async () => {
     showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
-  // Členstvo (od 28. 10. 2026): Gold 100 / Onyx 250 tipov, bez časového limitu (rovnako ako na webe).
-  const length = MEMBERSHIPS[subTierSelect.value] ? subTierSelect.value : "p100";
+  // Členstvo (od 29. 10. 2026): Štart 75 / Gold 150 / Onyx 250 tipov, bez časového limitu (rovnako ako na webe).
+  const length = MEMBERSHIPS[subTierSelect.value] ? subTierSelect.value : "p150";
   const pkg = MEMBERSHIPS[length];
   const tier = "individual";
   const priceEur = pkg.price;
@@ -2749,7 +2750,7 @@ document.addEventListener("click", async (e) => {
   btn.disabled = false;
   renderLeads();
 });
-const LEAD_PLAN_LABEL: Record<string, string> = { stat: "Štart 100 tipov", gold: "Gold 250 tipov", onyx: "Onyx 500 tipov", start: "Gold 250 tipov (starý odkaz)", seria: "Onyx 500 tipov (starý odkaz)", sampion: "Onyx 500 tipov (starý odkaz)", vip: "Onyx 500 tipov (starý odkaz VIP)", premium: "starý odkaz Premium", clenstvo: "nevybral", otazka: "otázka z webu" };
+const LEAD_PLAN_LABEL: Record<string, string> = { stat: "Štart 75 tipov", gold: "Gold 150 tipov", onyx: "Onyx 250 tipov", start: "Štart 75 tipov (starý odkaz)", seria: "Gold 150 tipov (starý odkaz)", sampion: "Onyx 250 tipov (starý odkaz)", vip: "Onyx 250 tipov (starý odkaz VIP)", premium: "starý odkaz Premium", clenstvo: "nevybral", otazka: "otázka z webu" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
@@ -2781,7 +2782,7 @@ async function renderLeads() {
         (document.getElementById("subContact") as HTMLInputElement).value = l.username ? "@" + l.username : "";
         (document.getElementById("subTelegramChatId") as HTMLInputElement).value = l.chatId;
         (document.getElementById("subTier") as HTMLSelectElement).value =
-          ({ gold: "p100", stat: "p100", start: "p100", onyx: "p250", seria: "p250", sampion: "p250", vip: "p250" } as Record<string, string>)[String(l.plan).replace(/_waitlist$/, "")] || "p100";
+          ({ stat: "p75", start: "p75", gold: "p150", seria: "p150", onyx: "p250", sampion: "p250", vip: "p250" } as Record<string, string>)[String(l.plan).replace(/_waitlist$/, "")] || "p75";
         document.getElementById("subName")?.scrollIntoView({ behavior: "smooth", block: "center" });
         showToast("Údaje sú vyplnené – skontroluj ich a klikni na Pridať.");
       };
