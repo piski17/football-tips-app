@@ -42,7 +42,9 @@ import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSA
 
 // Top ligy dostupné s API-Football Pro plánom.
 const LEAGUE_PRESETS: LeaguePreset[] = [
-  // 30. 10. 2026 (Michalovo rozhodnutie, podľa nástroja Trhy v ligách): 12 súťaží – 7 najvyšších líg,
+  // 30. 10. 2026 večer (Michal): 17 súťaží – pribudlo 5 najvyšších líg Belgicko, Turecko, Dánsko,
+  // Škótsko, Rumunsko (v Trhoch v ligách 5/7 trhov), tipy normálne medzi odporúčané.
+  // 30. 10. 2026 dopoludnia (Michalovo rozhodnutie, podľa nástroja Trhy v ligách): 12 súťaží – 7 najvyšších líg,
   // 4 druhé ligy a Liga majstrov. Belgicko, Škótsko a Serie B vyradené (Serie B má kurzy len na góly).
   // (Predtým v ten deň Chance Liga a Niké liga nahradené Belgickom a Škótskom.)
   // Odstránené: Európska liga, Belgicko, Turecko, Poľsko (a skúšané Rakúsko, Švajčiarsko, Dánsko, Škótsko, Chorvátsko).
@@ -53,6 +55,11 @@ const LEAGUE_PRESETS: LeaguePreset[] = [
   { id: 61, name: "Ligue 1", country: "Francúzsko" },
   { id: 88, name: "Eredivisie", country: "Holandsko" },
   { id: 94, name: "Primeira Liga", country: "Portugalsko" },
+  { id: 144, name: "Jupiler Pro League", country: "Belgicko" },
+  { id: 203, name: "Süper Lig", country: "Turecko" },
+  { id: 119, name: "Superliga", country: "Dánsko" },
+  { id: 179, name: "Premiership", country: "Škótsko" },
+  { id: 283, name: "Liga I", country: "Rumunsko" },
   { id: 40, name: "Championship", country: "Anglicko" },
   { id: 79, name: "2. Bundesliga", country: "Nemecko" },
   { id: 141, name: "Segunda División", country: "Španielsko" },
