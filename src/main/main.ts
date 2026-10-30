@@ -42,7 +42,8 @@ import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSA
 
 // Top ligy dostupné s API-Football Pro plánom.
 const LEAGUE_PRESETS: LeaguePreset[] = [
-  // 29. 10. 2026 (Michalovo rozhodnutie): 15 súťaží – 9 najvyšších líg, 5 druhých líg a Liga majstrov.
+  // 30. 10. 2026 (Michalovo rozhodnutie): 15 súťaží – 9 najvyšších líg, 5 druhých líg a Liga majstrov.
+  // 30. 10. Chance Liga (Česko) a Niké liga (Slovensko) nahradené Belgickom a Škótskom (viac trhov u stávkoviek).
   // Odstránené: Európska liga, Belgicko, Turecko, Poľsko (a skúšané Rakúsko, Švajčiarsko, Dánsko, Škótsko, Chorvátsko).
   { id: 39, name: "Premier League", country: "Anglicko" },
   { id: 140, name: "La Liga", country: "Španielsko" },
@@ -51,8 +52,8 @@ const LEAGUE_PRESETS: LeaguePreset[] = [
   { id: 61, name: "Ligue 1", country: "Francúzsko" },
   { id: 88, name: "Eredivisie", country: "Holandsko" },
   { id: 94, name: "Primeira Liga", country: "Portugalsko" },
-  { id: 345, name: "Chance Liga", country: "Česko" },
-  { id: 332, name: "Niké liga", country: "Slovensko" },
+  { id: 144, name: "Jupiler Pro League", country: "Belgicko" },
+  { id: 179, name: "Premiership", country: "Škótsko" },
   { id: 40, name: "Championship", country: "Anglicko" },
   { id: 79, name: "2. Bundesliga", country: "Nemecko" },
   { id: 136, name: "Serie B", country: "Taliansko" },
