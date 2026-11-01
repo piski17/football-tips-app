@@ -1668,19 +1668,19 @@ function daysUntil(dateStr: string): number {
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
-// Členstvo (od 31. 10. 2026 večer) – rovnaké ako na webe (src/payments.ts PAY_TERMS): 50 – 300 tipov po 50 – 39 / 75 / 109 / 139 / 169 / 199 €
-// (50 = Štart, 100 – 150 = Gold, 200 – 300 = Platinum), bez časového limitu. Garancia: prvých 30 tipov bez rizika (peniaze späť) a členstvo v mínuse → 1 mesiac zadarmo (oboje v app.tipradar.eu v karte Garancia).
+// Členstvo (od 31. 10. 2026 večer) – rovnaké ako na webe (src/payments.ts PAY_TERMS): Štart 50 tipov 39 €, Premium 100 tipov 75 €, VIP 150 tipov 109 €,
+// Gold 200 tipov 139 €, Platinum 250 tipov 169 € (Gold a Platinum mentoring), bez časového limitu. Garancia: prvých 20 tipov bez rizika (peniaze späť) a členstvo v mínuse → 1 mesiac zadarmo (oboje v app.tipradar.eu v karte Garancia).
 const MEMBERSHIPS: Record<string, { name: string; tips: number; price: number; months: number }> = {
   p50: { name: "ŠTART", tips: 50, price: 39, months: 1200 },
-  p100: { name: "GOLD", tips: 100, price: 75, months: 1200 },
-  p150: { name: "GOLD", tips: 150, price: 109, months: 1200 },
-  p200: { name: "PLATINUM", tips: 200, price: 139, months: 1200 },
+  p100: { name: "PREMIUM", tips: 100, price: 75, months: 1200 },
+  p150: { name: "VIP", tips: 150, price: 109, months: 1200 },
+  p200: { name: "GOLD", tips: 200, price: 139, months: 1200 },
   p250: { name: "PLATINUM", tips: 250, price: 169, months: 1200 },
-  p300: { name: "PLATINUM", tips: 300, price: 199, months: 1200 },
 };
 // Staré členstvá a balíčky tipov (27. – 29. 10. 2026), len na zobrazenie starších záznamov.
 const PACKAGES: Record<string, { name: string; tips: number; price: number; months: number }> = {
   p75: { name: "ŠTART", tips: 75, price: 49, months: 1200 },
+  p300: { name: "PLATINUM", tips: 300, price: 199, months: 1200 },
   t75: { name: "ŠTART", tips: 100, price: 89, months: 1200 },
   t150: { name: "GOLD", tips: 250, price: 179, months: 1200 },
   t300: { name: "ONYX", tips: 500, price: 299, months: 1200 },
@@ -1763,9 +1763,9 @@ function renderSubscribersList(subs: any[]) {
       const id = (e.currentTarget as HTMLElement).dataset.extendId!;
       const sub = subs.find((s) => s.id === id);
       if (!sub) return;
-      // Ďalšie členstvo (rovnaký počet tipov; staré → najbližší počet 50 – 300). Začína dnes,
+      // Ďalšie členstvo (rovnaké; staré → Štart / Premium / Platinum). Začína dnes,
       // tipy idú najprv do starého členstva (alebo mesiaca zadarmo), kým sa nemiňú (počíta server).
-      const term = MEMBERSHIPS[sub.length] ? sub.length : sub.length === "p75" || sub.length === "m1" || !sub.length ? "p50" : sub.length === "t75" ? "p100" : sub.length === "t150" ? "p250" : "p300";
+      const term = MEMBERSHIPS[sub.length] ? sub.length : sub.length === "p75" || sub.length === "m1" || !sub.length ? "p50" : sub.length === "t75" ? "p100" : "p250";
       const p = MEMBERSHIPS[term];
       const end = memberEnd(new Date(), p.months);
       if (!window.confirm(`Zapísať ${sub.name} ďalšie členstvo ${p.name} · ${p.tips} tipov (${p.price} €)?`)) return;
@@ -1831,7 +1831,7 @@ addSubscriberBtn.addEventListener("click", async () => {
     showToast("Zadaj meno alebo názov skupiny.");
     return;
   }
-  // Členstvo (od 31. 10. 2026 večer): 50 – 300 tipov po 50, bez časového limitu (rovnako ako na webe).
+  // Členstvo (od 31. 10. 2026 večer): Štart / Premium / VIP / Gold / Platinum = 50 – 250 tipov, bez časového limitu (rovnako ako na webe).
   const length = MEMBERSHIPS[subTierSelect.value] ? subTierSelect.value : "p100";
   const pkg = MEMBERSHIPS[length];
   const tier = "individual";
@@ -2754,7 +2754,7 @@ document.addEventListener("click", async (e) => {
   btn.disabled = false;
   renderLeads();
 });
-const LEAD_PLAN_LABEL: Record<string, string> = { stat: "Štart 50 tipov", gold: "Gold 100 tipov", platinum: "Platinum 200 tipov", onyx: "Platinum 200 tipov (starý odkaz Onyx)", start: "Štart 50 tipov (starý odkaz)", seria: "Gold 100 tipov (starý odkaz)", sampion: "Platinum 200 tipov (starý odkaz)", vip: "Platinum 200 tipov (starý odkaz VIP)", premium: "starý odkaz Premium", clenstvo: "nevybral", otazka: "otázka z webu", c50: "Štart 50 tipov", c100: "Gold 100 tipov", c150: "Gold 150 tipov", c200: "Platinum 200 tipov", c250: "Platinum 250 tipov", c300: "Platinum 300 tipov" };
+const LEAD_PLAN_LABEL: Record<string, string> = { stat: "Štart 50 tipov (starý odkaz)", start: "Štart 50 tipov (starý odkaz)", seria: "Premium 100 tipov (starý odkaz)", vip: "VIP 150 tipov (starý odkaz)", gold: "Gold 200 tipov (starý odkaz)", platinum: "Platinum 250 tipov (starý odkaz)", onyx: "Platinum 250 tipov (starý odkaz)", sampion: "Platinum 250 tipov (starý odkaz)", premium: "starý odkaz Premium", clenstvo: "nevybral", otazka: "otázka z webu", c50: "Štart 50 tipov", c100: "Premium 100 tipov", c150: "VIP 150 tipov", c200: "Gold 200 tipov", c250: "Platinum 250 tipov" };
 async function renderLeads() {
   const el = document.getElementById("leadsList");
   if (!el) return;
@@ -2786,7 +2786,7 @@ async function renderLeads() {
         (document.getElementById("subContact") as HTMLInputElement).value = l.username ? "@" + l.username : "";
         (document.getElementById("subTelegramChatId") as HTMLInputElement).value = l.chatId;
         (document.getElementById("subTier") as HTMLSelectElement).value =
-          ({ stat: "p50", start: "p50", gold: "p100", seria: "p100", platinum: "p200", onyx: "p200", sampion: "p200", vip: "p200", c50: "p50", c100: "p100", c150: "p150", c200: "p200", c250: "p250", c300: "p300" } as Record<string, string>)[String(l.plan).replace(/_waitlist$/, "")] || "p50";
+          ({ stat: "p50", start: "p50", seria: "p100", vip: "p150", gold: "p200", platinum: "p250", onyx: "p250", sampion: "p250", c50: "p50", c100: "p100", c150: "p150", c200: "p200", c250: "p250" } as Record<string, string>)[String(l.plan).replace(/_waitlist$/, "")] || "p50";
         document.getElementById("subName")?.scrollIntoView({ behavior: "smooth", block: "center" });
         showToast("Údaje sú vyplnené – skontroluj ich a klikni na Pridať.");
       };

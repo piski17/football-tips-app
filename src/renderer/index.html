@@ -9,10 +9,12 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Nočný zápas (1. 11. 2026): reflektory v pozadí ako na tipradar.eu -->
+  <div class="lights" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div id="splashScreen" class="splash-screen" role="status" aria-label="TipRadar sa načítava">
     <div class="splash-inner">
       <svg class="splash-radar" viewBox="0 0 200 200" aria-hidden="true">
@@ -39,7 +41,7 @@
         <circle cx="100" cy="100" r="94" fill="none" stroke="#D9C08A" stroke-width="2"/>
         <circle cx="100" cy="100" r="4.5" fill="#F3E6C4"/>
       </svg>
-      <div class="splash-word">TipRadar</div>
+      <div class="splash-word">Tip<em>Radar</em></div>
       <div class="splash-tag">Štatistický model <i></i> Tipy s hodnotou</div>
       <div class="splash-progress">
         <div class="splash-progress-track">
@@ -54,7 +56,7 @@
     <header class="topbar">
       <div class="brand">
         <span class="brand-mark"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="rmBrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F3E6C4"/><stop offset=".45" stop-color="#d9c08a"/><stop offset="1" stop-color="#B8995E"/></linearGradient></defs><circle cx="100" cy="100" r="92" fill="#161412"/><path d="M100 100 L100 12 A88 88 0 0 1 162.2 37.8 Z" fill="#d9c08a" fill-opacity=".32"/><line x1="100" y1="100" x2="162.2" y2="37.8" stroke="#D9C08A" stroke-width="7" stroke-linecap="round"/><circle cx="100" cy="100" r="92" fill="none" stroke="#D9C08A" stroke-width="8"/><circle cx="100" cy="100" r="58" fill="none" stroke="#d9c08a" stroke-opacity=".5" stroke-width="4"/><circle cx="100" cy="100" r="9" fill="#f3e6c4"/></svg></span>
-        <h1>TipRadar</h1>
+        <h1>Tip<em>Radar</em></h1>
       </div>
 
       <div class="topbar-controls">
@@ -168,11 +170,10 @@
         <input type="text" id="subTelegramChatId" placeholder="Telegram chat ID (voliteľné)" />
         <select id="subTier">
           <option value="p50">ŠTART · 50 tipov (39 €)</option>
-          <option value="p100" selected>GOLD · 100 tipov (75 €)</option>
-          <option value="p150">GOLD · 150 tipov (109 €)</option>
-          <option value="p200">PLATINUM · 200 tipov (139 €)</option>
+          <option value="p100">PREMIUM · 100 tipov (75 €)</option>
+          <option value="p150" selected>VIP · 150 tipov (109 €)</option>
+          <option value="p200">GOLD · 200 tipov (139 €)</option>
           <option value="p250">PLATINUM · 250 tipov (169 €)</option>
-          <option value="p300">PLATINUM · 300 tipov (199 €)</option>
         </select>
         <button class="btn-primary" id="addSubscriberBtn">Pridať</button>
       </div>

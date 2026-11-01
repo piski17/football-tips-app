@@ -1802,3 +1802,94 @@ input, select, textarea, .date-input, .edit-select, .modal input, .modal select,
 .prob-bar-track, .market-breakdown-bar, .bt-bar { border-radius: 999px !important; }
 .prob-bar-fill, .market-breakdown-bar-fill { border-radius: 999px !important; }
 .leads-title::before, .market-breakdown-title::before { content: "★ "; color: var(--gold); }
+
+/* ================================================================
+   NOČNÝ ZÁPAS (1. 11. 2026) – Mac appka v rovnakom vzhľade ako
+   tipradar.eu a app.tipradar.eu: teplá čierna #070708, zlatá fólia,
+   reflektory, zrnitá textúra, lesk na zlatých tlačidlách.
+   Písma Bricolage Grotesque + Instrument Sans + Instrument Serif kurzíva.
+   Bez veľkých písmen v nadpisoch. Funkcie bez zmeny.
+   (Zámerne na konci, aby mala prednosť.)
+   ================================================================ */
+:root {
+  --bg: #070708; --bg-2: #0C0C0E;
+  --surface: #111114; --surface-alt: #16161A;
+  --border: rgba(222, 196, 140, 0.12); --line: rgba(222, 196, 140, 0.26);
+  --accent: #D6B676; --accent-strong: #F3E2B3; --gold: #D6B676; --rose-hi: #F3E2B3; --rose-deep: #A8843F;
+  --foil: linear-gradient(115deg, #F6E7BE 0%, #D9BB7A 38%, #A8843F 62%, #E9D29C 100%);
+  --danger: #DA828C; --success: #86C9A2;
+  --text: #F3EEE3; --text-muted: #ABA396; --faint: #77705F;
+  --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --r-card: 20px; --r-sm: 13px;
+}
+html { background: #070708 !important; }
+body { background: transparent !important; font-family: var(--font-body) !important; font-weight: 400; color: var(--text); }
+::selection { background: rgba(214, 182, 118, .35); color: #fff; }
+/* reflektory + zrnitá textúra */
+.lights { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: radial-gradient(60% 46% at 60% -12%, rgba(214, 182, 118, .085), transparent 70%), #070708; }
+.lights i { position: absolute; top: -20vh; width: 34vw; height: 120vh; transform-origin: 50% 0; background: linear-gradient(180deg, rgba(246, 231, 190, .06), rgba(246, 231, 190, 0) 70%); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); filter: blur(12px); animation: nzSway 16s ease-in-out infinite; }
+.lights i:nth-child(1) { left: 4vw; transform: rotate(-24deg); }
+.lights i:nth-child(2) { left: 28vw; transform: rotate(-9deg); animation-delay: -5s; opacity: .65; }
+.lights i:nth-child(3) { right: 12vw; transform: rotate(9deg); animation-delay: -9s; opacity: .65; }
+.lights i:nth-child(4) { right: -8vw; transform: rotate(24deg); animation-delay: -2s; }
+@keyframes nzSway { 0%, 100% { translate: 0 0; } 50% { translate: 1.5vw 0; } }
+body::after { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+.app, .content, .fixture-column, .analysis-column { background: transparent !important; }
+.fixture-column { border-right: 1px solid var(--border) !important; background: linear-gradient(180deg, rgba(255, 255, 255, .015), transparent) !important; }
+
+/* nadpisy: Bricolage, bez veľkých písmen; zlaté slovo kurzívou */
+h1, h2, h3, h4, .splash-word, .brand h1, .column-header h2, .section-title, .monthly-title {
+  font-family: var(--font-display) !important; font-weight: 700 !important; text-transform: none !important; letter-spacing: -.025em !important; font-style: normal !important; color: var(--text);
+}
+.brand h1, .splash-word { color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; background: none !important; }
+.brand h1 em, .splash-word em, .column-header h2 em, .modal h3 em {
+  font-family: var(--font-serif); font-style: italic; font-weight: 400; letter-spacing: -.01em; padding: 0 .06em 0 .02em; display: inline-block; font-size: 1.1em; line-height: 1;
+  background: var(--foil); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; animation: nzFoil 7s ease-in-out infinite;
+}
+@keyframes nzFoil { 0%, 100% { background-position: 0 0; } 50% { background-position: 100% 0; } }
+.brand h1 { font-size: 22px !important; }
+.splash-screen { background: radial-gradient(50% 44% at 50% 46%, rgba(214, 182, 118, .13), transparent 70%), #070708 !important; }
+.splash-tag { font-family: var(--font-body) !important; font-weight: 600; letter-spacing: .24em; color: var(--gold) !important; }
+
+/* horná lišta: sklo ako plávajúce menu webu */
+.topbar { background: rgba(10, 10, 12, .82) !important; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-bottom: 1px solid transparent !important; border-image: linear-gradient(90deg, rgba(214, 182, 118, .4), rgba(214, 182, 118, .06) 60%, transparent) 1 !important; }
+
+/* štítky (eyebrow) */
+.section-title, .market-breakdown-title, .leads-title, .prob-label, .tip-label, .monthly-stat small { font-family: var(--font-body) !important; }
+.tip-label { letter-spacing: .22em !important; text-transform: uppercase; color: var(--gold) !important; font-size: 11px !important; font-weight: 600 !important; }
+.leads-title, .market-breakdown-title { font-family: var(--font-display) !important; text-transform: none !important; letter-spacing: -.01em !important; color: var(--text) !important; font-size: 16px !important; font-weight: 650 !important; }
+.leads-title::before, .market-breakdown-title::before { content: "" !important; display: inline-block; width: 22px; height: 1px; margin-right: 10px; vertical-align: middle; background: linear-gradient(90deg, transparent, var(--gold)); }
+.prob-value, .monthly-stat b, .stat-card b, .tip-outcome, .time, .scorer-odds-input { font-family: var(--font-display) !important; font-variant-numeric: tabular-nums lining-nums; letter-spacing: -.02em; }
+
+/* karty: tmavý panel s tenkým zlatým lemom */
+.stat-card, .market-card, .tip-callout, .tip-row, .fixture-row, .league-item, .bt-summary, .monthly-stat, .best-bet-row, .match-locked, .bankroll-section, .toast {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .028), rgba(255, 255, 255, 0)), #111114 !important; border-color: var(--border) !important;
+}
+.stat-card, .market-card, .tip-callout { position: relative; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035), 0 26px 60px -34px rgba(0, 0, 0, .95) !important; border: 1px solid var(--border) !important; }
+.stat-card::after, .market-card::after, .tip-callout::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(160deg, rgba(243, 226, 179, .3), transparent 32%, transparent 70%, rgba(214, 182, 118, .14));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.tip-callout { background: radial-gradient(120% 140% at 0% 0%, rgba(214, 182, 118, .14), transparent 55%), #111114 !important; }
+.fixture-row:hover, .league-item:hover, .tip-row:hover { border-color: rgba(214, 182, 118, .3) !important; background: linear-gradient(90deg, rgba(214, 182, 118, .07), rgba(214, 182, 118, .01)), #111114 !important; }
+.fixture-row.active, .fixture-row.selected { border-color: rgba(214, 182, 118, .45) !important; box-shadow: inset 3px 0 0 var(--gold) !important; }
+.modal { background: linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, 0)), #111114 !important; border: 1px solid rgba(222, 196, 140, .26) !important; border-radius: 24px !important; box-shadow: 0 40px 100px -30px rgba(0, 0, 0, .9) !important; }
+.modal-overlay { background: rgba(4, 4, 5, .74) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+/* tlačidlá: zlatá fólia s preletom lesku, priehľadné so zlatým lemom */
+.btn-primary { position: relative; overflow: hidden; isolation: isolate; border-radius: 999px !important; border: 0 !important; background: var(--foil) !important; background-size: 160% 100% !important; color: #17130A !important; text-transform: none !important; letter-spacing: .01em !important; font-family: var(--font-body) !important; font-weight: 600 !important;
+  box-shadow: 0 10px 30px -12px rgba(214, 182, 118, .55), inset 0 1px 0 rgba(255, 255, 255, .5) !important; transition: background-position .5s, transform .2s, box-shadow .3s; }
+.btn-primary:hover:not(:disabled) { background-position: 100% 0 !important; transform: translateY(-1px); }
+.btn-primary::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .55) 50%, transparent 65%); transform: translateX(-120%); transition: transform .8s cubic-bezier(.2, .7, .2, 1); }
+.btn-primary:hover::after { transform: translateX(120%); }
+.btn-ghost, .tip-save-btn, .btn-mini { text-transform: none !important; letter-spacing: .01em !important; font-family: var(--font-body) !important; font-weight: 600 !important; font-size: 13px; color: var(--text) !important; background: rgba(255, 255, 255, .02) !important; border: 1px solid rgba(222, 196, 140, .26) !important; }
+.btn-ghost:hover:not(:disabled), .tip-save-btn:hover:not(:disabled), .btn-mini:hover:not(:disabled) { border-color: var(--gold) !important; color: #F3E2B3 !important; background: rgba(214, 182, 118, .07) !important; }
+input, select, textarea, .date-input, .edit-select, .modal input, .modal select, .modal textarea, .bankroll-controls input, .subscriber-form select, .custom-league-input { background: rgba(255, 255, 255, .03) !important; border-color: rgba(222, 196, 140, .14) !important; font-family: var(--font-body) !important; color: var(--text) !important; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: rgba(222, 196, 140, .5) !important; box-shadow: 0 0 0 4px rgba(214, 182, 118, .1) !important; }
+select option { background: #141417; }
+.prob-bar-fill, .market-breakdown-bar-fill { background: var(--foil) !important; }
+.strong-tip { background: var(--foil) !important; color: #17130A !important; }
+::-webkit-scrollbar-thumb { background: rgba(214, 182, 118, .26); border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) { .lights i, .brand h1 em, .splash-word em { animation: none !important; } }
