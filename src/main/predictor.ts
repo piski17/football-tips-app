@@ -990,7 +990,7 @@ export function predictMatch(
       b.rejectReason = "nízky kurz, bez hodnoty";
       lowValueBets.push(b);
     } else if (b.odds != null && b.odds < MIN_ODDS) {
-      // Kurz pod minimom (predvolene 1,50) - tip má hodnotu, ale zisk z výhry je malý.
+      // Kurz pod minimom (predvolene 1,60) - tip má hodnotu, ale zisk z výhry je malý.
       b.rejectReason = `kurz pod ${MIN_ODDS.toFixed(2).replace(".", ",")}`;
       lowValueBets.push(b);
     } else if (fewGames && (b.oddsBookmakers ?? 0) < MIN_BOOKMAKERS_FEW_GAMES) {
