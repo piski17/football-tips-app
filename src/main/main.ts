@@ -42,6 +42,7 @@ import { computeTicketStatus, settleBet, tipHasStartedMatch, MATCH_STARTED_MESSA
 
 // Top ligy dostupné s API-Football Pro plánom.
 const LEAGUE_PRESETS: LeaguePreset[] = [
+  // 5. 11. 2026 (Michal): 19 súťaží – pribudli Európska liga (3) a Konferenčná liga (848).
   // 2. 11. 2026 15:15 (Michal): vrátených všetkých 17 súťaží (ráno skúšobne 10).
   // 30. 10. 2026 večer (Michal): 17 súťaží – pribudlo 5 najvyšších líg Belgicko, Turecko, Dánsko,
   // Škótsko, Rumunsko (v Trhoch v ligách 5/7 trhov), tipy normálne medzi odporúčané.
@@ -66,6 +67,9 @@ const LEAGUE_PRESETS: LeaguePreset[] = [
   { id: 141, name: "Segunda División", country: "Španielsko" },
   { id: 62, name: "Ligue 2", country: "Francúzsko" },
   { id: 2, name: "UEFA Champions League", country: "Európa" },
+  // 5. 11. 2026 (Michal): pribudla Európska liga a Konferenčná liga → 19 súťaží.
+  { id: 3, name: "UEFA Europa League", country: "Európa" },
+  { id: 848, name: "UEFA Conference League", country: "Európa" },
   // Liga národov (id 5) odstránená 6. 10. 2026 - reprezentácie majú málo zápasov, tipy nespoľahlivé.
 ];
 
