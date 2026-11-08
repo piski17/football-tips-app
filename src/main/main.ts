@@ -61,7 +61,6 @@ const LEAGUE_PRESETS: LeaguePreset[] = [
   { id: 203, name: "Süper Lig", country: "Turecko" },
   { id: 119, name: "Superliga", country: "Dánsko" },
   { id: 179, name: "Premiership", country: "Škótsko" },
-  { id: 283, name: "Liga I", country: "Rumunsko" },
   { id: 40, name: "Championship", country: "Anglicko" },
   { id: 79, name: "2. Bundesliga", country: "Nemecko" },
   { id: 141, name: "Segunda División", country: "Španielsko" },
