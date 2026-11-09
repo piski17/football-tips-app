@@ -530,6 +530,14 @@ function marketConflictLimit(h2hMatchesUsed: number): number {
   return h2hMatchesUsed >= 5 ? 25 : h2hMatchesUsed >= 3 ? 20 : 15;
 }
 
+/**
+ * Fauly (9. 11. 2026, Michalovo rozhodnutie): tipy na fauly (zápas aj tím) sa odporúčajú len v najvyšších
+ * súťažiach – Premier League (39), La Liga (140), Serie A (135), Bundesliga (78), Ligue 1 (61) a Liga majstrov (2).
+ * V ostatných ligách ostávajú fauly len v analýze (ručne sa dajú uložiť) a v „Všetky trhy“ na mesačnú kontrolu.
+ */
+export const FOUL_LEAGUE_IDS = [39, 140, 135, 78, 61, 2];
+const isFoulMarket = (market: string): boolean => market === "Fauly" || market.startsWith("Fauly ");
+
 export function predictMatch(
   fixture: Fixture,
   homeStats: TeamStatistics,
@@ -967,6 +975,10 @@ export function predictMatch(
       // zápasu a „oba tímy skórujú" nie sú v zozname trhov. V analýze ostávajú viditeľné,
       // ručne sa dajú uložiť.
       b.rejectReason = "tento trh neodporúčame";
+      lowValueBets.push(b);
+    } else if (isFoulMarket(b.market) && !FOUL_LEAGUE_IDS.includes(Number(fixture.league?.id))) {
+      // Fauly len v top súťažiach (9. 11. 2026, Michal) – pozri FOUL_LEAGUE_IDS.
+      b.rejectReason = "fauly odporúčame len v najvyšších súťažiach (top 5 líg a Liga majstrov)";
       lowValueBets.push(b);
     } else if (minGamesPlayed < MIN_GAMES_TO_RECOMMEND) {
       // Príliš málo zápasov v sezóne (napr. začiatok Ligy národov) - odhad stojí
